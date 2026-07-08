@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compaction & memory — surviving long conversations</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 5 · Context & Reliability (15%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 5 · Context Management &amp; Reliability</span>
+    <h1>Compaction &amp; memory</h1>
+    <p class="lede">A long agent run or chat keeps growing until it threatens the context window. <b>Compaction</b>
+      is summarising the older turns into a compact note so the work can continue — but summarise carelessly and
+      you lose the one fact you needed. The exam's sharpest angle: <b>progressive summarisation can quietly drop
+      precise, transactional data.</b></p>
+    <div class="tagrow">
+      <span class="tag key">compaction</span><span class="tag key">progressive summarisation</span>
+      <span class="tag key">lossy vs lossless</span><span class="tag">external memory</span>
+      <span class="tag">structured notes</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Your desk is filling up with pages, so you write a <b>short summary</b> and throw the old pages away to make
+    room. Smart! But if your summary says "we talked about the order" and forgets the exact <b>order number
+    #4471</b>, you've thrown away the one thing you actually needed. Good summarising keeps the <b>important exact
+    details</b> and only blurs the chit-chat.
+  </div>
+
+  <h2>Watch a summary lose something important</h2>
+  <p>An agent has been handling a refund. The conversation is getting long, so it compacts. Choose how it
+  summarises and see what survives — and what silently vanishes:</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>compaction strategy</label>
+      <select id="strat">
+        <option value="naive">naïve: "summarise the conversation so far"</option>
+        <option value="structured">structured: preserve IDs, amounts, decisions, open tasks</option>
+      </select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div><div class="small muted" style="margin-bottom:6px;">before (full history)</div>
+        <pre id="before" style="font-size:12px;"></pre></div>
+      <div><div class="small muted" style="margin-bottom:6px;">after compaction</div>
+        <pre id="after" style="font-size:12px;"></pre></div>
+    </div>
+    <p id="note" class="note"></p>
+  </div>
+
+  <h2>Strategies, from cheap to robust</h2>
+  <table>
+    <tr><th>Approach</th><th>How</th><th>Risk</th></tr>
+    <tr><td><b>Truncation</b></td><td>Drop the oldest turns.</td><td>Loses early context entirely (the goal!).</td></tr>
+    <tr><td><b>Progressive summarisation</b></td><td>Replace old turns with an LLM summary.</td><td><b>Lossy</b> — precise/transactional facts (IDs, amounts) get blurred away.</td></tr>
+    <tr><td><b>Structured memory note</b></td><td>Maintain a running, schema'd scratchpad (decisions, IDs, open tasks) that survives compaction verbatim.</td><td>Needs discipline, but keeps the critical bits exact.</td></tr>
+    <tr><td><b>External memory / retrieval</b></td><td>Store facts outside the window; retrieve on demand.</td><td>Adds a retrieval step; must fetch the right thing.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> <b>progressive summarisation is lossy</b> — never rely on it to carry
+  exact, transactional data (order numbers, dollar amounts, approval flags). The right design keeps those in a
+  <b>structured note</b> or <b>external store</b> that compaction preserves verbatim, and summarises only the
+  narrative. "Just summarise everything" is the wrong answer whenever precise values matter.</div>
+
+  <div class="note green"><b>Takeaways:</b> long runs need <b>compaction</b>, but summarisation is <b>lossy</b> —
+  it can silently drop precise transactional data. Protect critical facts (IDs, amounts, decisions, open tasks)
+  in a <b>structured memory note</b> or <b>external store</b> that survives verbatim; summarise only the
+  conversational narrative. Match the strategy to how exact the data must stay.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Context engineering (compaction & memory)</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 5.
+    Next: <a href="reliability.html">reliability & escalation →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const BEFORE = `CUST: I want a refund for order #4471.
+AGENT: I see it — total $128.50, paid by Visa •4242.
+CUST: yes, it arrived damaged.
+AGENT: Approved refund of $128.50 to the Visa.
+       Ticket RF-9931 opened. Will email a label.
+CUST: also cancel my newsletter.
+AGENT: done.
+...(14 more turns)...`;
+  const AFTER = {
+    naive: { p:`Summary: The customer requested and
+received a refund for a damaged order,
+and also unsubscribed from the newsletter.
+The agent handled both issues.`, n:false,
+      t:'<b>Lossy — danger!</b> Reads fine, but it <em>silently dropped</em> the order #4471, the exact $128.50, the Visa, and ticket RF-9931. On the next turn the agent literally cannot answer "what was my refund amount?" — the precise data is gone for good.' },
+    structured: { p:`## Running memory (preserved verbatim)
+- order_id: 4471
+- refund_amount: 128.50 USD → Visa •4242
+- refund_status: APPROVED (ticket RF-9931)
+- newsletter: unsubscribed
+Narrative: customer reported damage; agent
+approved refund + handled unsubscribe.`, n:true,
+      t:'<b>Robust.</b> The narrative is compressed, but every <b>transactional fact</b> — order ID, amount, card, ticket — is kept exact in a structured note that compaction won\'t blur. The agent can still answer precise questions 20 turns later.' },
+  };
+  $('#before').textContent = BEFORE;
+  const sel=$('#strat');
+  function show(){ const a=AFTER[sel.value]; $('#after').textContent=a.p;
+    $('#note').className='note '+(a.n?'green':''); $('#note').innerHTML=a.t; }
+  sel.addEventListener('change',show); show();
+})();
+</script>
+</body>
+</html>

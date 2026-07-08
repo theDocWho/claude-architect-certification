@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Headless mode & CI/CD — Claude Code without a human</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 3 · Claude Code Configuration (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 3 · Claude Code Configuration</span>
+    <h1>Headless mode &amp; CI/CD</h1>
+    <p class="lede">Claude Code isn't just an interactive chat — it can run <b>non-interactively</b> in a
+      pipeline. The <code>-p</code> (print) flag runs one prompt and exits; <code>--output-format json</code>
+      gives a machine-parseable result; and each run is an <b>isolated session</b>. That's how teams wire Claude
+      into automated PR reviews, test generation, and triage.</p>
+    <div class="tagrow">
+      <span class="tag key">-p / --print</span><span class="tag key">--output-format json</span>
+      <span class="tag key">session isolation</span><span class="tag">CI/CD</span>
+      <span class="tag">exit codes</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Normally you chat with Claude back and forth. <b>Headless mode</b> is like leaving it a note: "do exactly
+    this one job, write your answer on this card, and stop." No conversation, no waiting for you. A robot
+    assembly line (the <b>CI pipeline</b>) drops a note for every new code change — "review this" — and Claude
+    fills in the card. The line reads the card and decides: pass or block.
+  </div>
+
+  <h2>Interactive vs headless</h2>
+  <table>
+    <tr><th></th><th>Interactive</th><th>Headless (<code>-p</code>)</th></tr>
+    <tr><td><b>Who's there</b></td><td>a human, chatting turn by turn</td><td>nobody — a script or CI runner</td></tr>
+    <tr><td><b>Runs</b></td><td>open-ended session</td><td>one prompt, then exits</td></tr>
+    <tr><td><b>Output</b></td><td>rendered in the terminal</td><td><code>text</code> or <code>json</code> for parsing</td></tr>
+    <tr><td><b>State</b></td><td>persists across the session</td><td><b>isolated</b> per run (fresh each time)</td></tr>
+  </table>
+
+  <h2>Build a CI command</h2>
+  <p>Toggle the flags and see the command — and what the pipeline does with it:</p>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>output format</label><select id="fmt"><option>json</option><option>text</option></select></div>
+      <div class="ctrl"><label>task</label><select id="task">
+        <option value="review">automated PR review</option>
+        <option value="tests">generate missing tests</option>
+        <option value="triage">triage a new issue</option></select></div>
+      <div class="ctrl"><label>permission mode</label><select id="perm">
+        <option value="plan">plan (read-only, safe)</option>
+        <option value="accept">acceptEdits (can write)</option></select></div>
+    </div>
+    <pre id="cmd"></pre>
+    <p id="note" class="note"></p>
+  </div>
+
+  <h2>Why session isolation matters in CI</h2>
+  <p>Every pipeline run starts with a <b>clean context</b> — no leftover state from the last PR. That's a feature:
+  it makes runs reproducible and stops one job's context from leaking into another. It also means each run must be
+  given everything it needs up front (the diff, the standards, the task), because it remembers nothing from
+  before. Pair headless runs with a committed <code>CLAUDE.md</code> so every automated run inherits the same team
+  conventions.</p>
+
+  <div class="note clay"><b>Exam trap:</b> for CI you want <code>--output-format json</code> so the pipeline can
+  parse the result and set an exit status — plain text is for humans. Use <b>read-only / plan</b> permissions for
+  review jobs (they shouldn't mutate the repo), and reserve write permissions for jobs that are <em>meant</em> to
+  change files. "Just run interactive Claude in CI" is a wrong answer — there's no human to answer its prompts.</div>
+
+  <div class="note green"><b>Takeaways:</b> <code>-p</code> runs Claude Code <b>headless</b> (one prompt, then
+  exits); <code>--output-format json</code> makes the result <b>machine-parseable</b> for the pipeline; each run
+  is an <b>isolated session</b> (fresh context, reproducible). Give review jobs <b>read-only</b> permissions, feed
+  each run everything it needs up front, and lean on committed <b>CLAUDE.md</b> for shared standards.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/claude-code/headless" target="_blank" rel="noopener">Claude Code — Headless / SDK</a> ·
+  <a href="https://docs.anthropic.com/en/docs/claude-code/github-actions" target="_blank" rel="noopener">GitHub Actions</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 3.
+    Next domain: <a href="../4-prompting/prompt-anatomy.html">prompt engineering →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const PROMPTS = {
+    review:'Review the diff in this PR for bugs and security issues. Output findings as JSON.',
+    tests:'Find functions in src/ without tests and generate them. Do not modify source.',
+    triage:'Read this GitHub issue and label it, estimate severity, and suggest an owner.',
+  };
+  function render(){
+    const fmt=$('#fmt').value, task=$('#task').value, perm=$('#perm').value;
+    const permFlag = perm==='plan' ? '--permission-mode plan' : '--permission-mode acceptEdits';
+    $('#cmd').textContent =
+`claude -p "${PROMPTS[task]}" \\
+  --output-format ${fmt} \\
+  ${permFlag}
+# → in CI: parse stdout, set exit code, post a comment`;
+    const parts=[];
+    parts.push(fmt==='json'
+      ? 'JSON output → the pipeline parses it and can <b>fail the build</b> on findings.'
+      : '⚠ text output is for humans; a CI step would have to scrape it — prefer <code>json</code>.');
+    parts.push(perm==='plan'
+      ? 'Read-only/plan mode → safe for a <b>review</b> job; Claude can\'t mutate the repo.'
+      : (task==='review' ? '⚠ write mode on a <em>review</em> job is risky — reviews shouldn\'t edit code.' : 'Write mode → fine for a job <em>meant</em> to change files (e.g. generate tests).'));
+    parts.push('Each run is an <b>isolated session</b> — no memory of previous PRs.');
+    const bad = parts.some(p=>p.includes('⚠'));
+    $('#note').className = 'note ' + (bad?'':'green');
+    $('#note').innerHTML = parts.map(p=>'• '+p).join('<br>');
+  }
+  ['fmt','task','perm'].forEach(id=>$('#'+id).addEventListener('change',render)); render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grep vs Glob — picking the right built-in tool</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 3 · Claude Code Configuration (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 3 · Claude Code Configuration</span>
+    <h1>Grep vs Glob &amp; the built-in tools</h1>
+    <p class="lede">Claude Code ships with a small toolbox — <b>Read, Write, Edit, Bash, Grep, Glob</b> — and the
+      exam loves the <b>Grep-vs-Glob</b> distinction because it's the one everyone fumbles. One searches <em>file
+      contents</em>; the other searches <em>file names</em>. Pick the wrong one and the agent wastes turns and
+      tokens hunting in the dark.</p>
+    <div class="tagrow">
+      <span class="tag key">Grep = inside files</span><span class="tag key">Glob = file names</span>
+      <span class="tag">Read / Write / Edit</span><span class="tag">Bash</span>
+      <span class="tag">tool selection</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine a giant library. <b>Glob</b> is finding books by their <b>title pattern</b> — "give me every book
+    whose name ends in <i>-ology</i>." <b>Grep</b> is finding books by a <b>word printed inside</b> them — "give
+    me every book that mentions <i>dinosaurs</i> on any page." Same library, totally different searches. Ask for a
+    title when you mean a word inside, and you'll grab all the wrong books.
+  </div>
+
+  <h2>Run both searches on the same repo</h2>
+  <p>Below is a tiny codebase. Type a query and run it as a <b>Glob</b> (matches the file <em>path</em>) and as a
+  <b>Grep</b> (matches text <em>inside</em> files). Watch how the same string finds completely different things:</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl" style="flex:1;"><label>query</label><input id="q" type="text" value="auth"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="chip sel" style="margin-bottom:8px;">Glob — match file names/paths</div>
+        <div id="globOut" style="font-family:var(--mono);font-size:12.5px;"></div>
+      </div>
+      <div>
+        <div class="chip on" style="margin-bottom:8px;">Grep — match contents</div>
+        <div id="grepOut" style="font-family:var(--mono);font-size:12.5px;"></div>
+      </div>
+    </div>
+    <p class="small muted" style="margin-top:10px;">Try: <code>auth</code>, <code>*.test.js</code>, <code>password</code>, <code>TODO</code></p>
+  </div>
+
+  <h2>The whole toolbox, and when to reach for each</h2>
+  <table>
+    <tr><th>Tool</th><th>Use it to…</th><th>Don't use it to…</th></tr>
+    <tr><td><b>Glob</b></td><td>find files by name/path pattern (<code>**/*.test.ts</code>).</td><td>search what's <em>in</em> the files.</td></tr>
+    <tr><td><b>Grep</b></td><td>search file <em>contents</em> for a string/regex (<code>functio​n login</code>).</td><td>find files whose <em>name</em> matches — that's slower & noisier.</td></tr>
+    <tr><td><b>Read</b></td><td>open a specific file you already located.</td><td>"explore" — locate first with Glob/Grep, then Read precisely.</td></tr>
+    <tr><td><b>Edit</b></td><td>change exact text in a file you've Read.</td><td>create brand-new files (use Write).</td></tr>
+    <tr><td><b>Write</b></td><td>create a new file or fully replace one.</td><td>make a small change (use Edit — Write overwrites).</td></tr>
+    <tr><td><b>Bash</b></td><td>run commands, tests, git, builds.</td><td>search/read files — the dedicated tools are faster & safer than <code>cat</code>/<code>find</code>.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> "search the codebase for where <code>login()</code> is defined" → that's
+  <b>Grep</b> (content), not Glob. "Find all the test files" → that's <b>Glob</b> (names). And using <b>Bash</b>
+  with <code>grep</code>/<code>find</code>/<code>cat</code> when the dedicated tools exist is the wrong answer —
+  the built-ins are faster, safer, and don't dump huge output into the context window.</div>
+
+  <div class="note green"><b>Takeaways:</b> <b>Glob = match file names/paths</b>; <b>Grep = match text inside
+  files</b>. Locate with Glob/Grep, then <b>Read</b> the specific file; <b>Edit</b> to change existing text,
+  <b>Write</b> to create/replace, <b>Bash</b> for commands. Don't reimplement Grep/Glob/Read with Bash
+  <code>find</code>/<code>grep</code>/<code>cat</code> — the dedicated tools keep context lean.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code docs — built-in tools</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 3.
+    Next: <a href="skills-rules.html">skills, rules & hooks →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  const REPO = {
+    'src/auth/login.js': 'function login(user, pass){ /* check password */ return verify(user); }',
+    'src/auth/login.test.js': "test('login works', () => { /* TODO: edge cases */ });",
+    'src/payments/charge.js': 'function charge(card){ // auth the card first\\n  return gateway.run(card); }',
+    'src/payments/charge.test.js': "test('charge', () => { authorize(); });",
+    'src/utils/format.js': 'export const money = n => `$${n.toFixed(2)}`;',
+    'docs/SECURITY.md': '# Security\\nNever log a password. Rotate auth tokens.',
+  };
+  function globMatch(path, q) {
+    if (!q) return false;
+    if (q.includes('*')) { // simple glob: * -> .*  . -> \.
+      const re = new RegExp('^' + q.replace(/[.+?^${}()|[\\]\\\\]/g,'\\\\$&').replace(/\\*/g,'.*') + '$');
+      return re.test(path) || re.test(path.split('/').pop());
+    }
+    return path.toLowerCase().includes(q.toLowerCase());
+  }
+  function render() {
+    const q = $('#q').value.trim();
+    const g = $('#globOut'), r = $('#grepOut'); g.innerHTML=''; r.innerHTML='';
+    let gn=0, rn=0;
+    Object.entries(REPO).forEach(([path, body]) => {
+      if (globMatch(path, q)) { gn++; g.appendChild(el('div',{style:{padding:'2px 0',color:'var(--clay-deep)'},text:'📄 '+path})); }
+      if (q && body.toLowerCase().includes(q.toLowerCase())) {
+        rn++; const idx = body.toLowerCase().indexOf(q.toLowerCase());
+        const snip = body.slice(Math.max(0,idx-12), idx+q.length+14).replace(/\\\\n/g,' ');
+        r.appendChild(el('div',{style:{padding:'2px 0'},html:'<span style="color:var(--green)">'+path+'</span> <span class="muted">…'+snip+'…</span>'}));
+      }
+    });
+    if (!gn) g.appendChild(el('div',{class:'muted',text:'no file names match'}));
+    if (!rn) r.appendChild(el('div',{class:'muted',text:'no file contents match'}));
+  }
+  $('#q').addEventListener('input', render); render();
+})();
+</script>
+</body>
+</html>

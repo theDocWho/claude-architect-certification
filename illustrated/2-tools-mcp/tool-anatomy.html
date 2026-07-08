@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy of a tool — the description is the API</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 2 · Tool Design & MCP (18%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 2 · Tool Design & MCP</span>
+    <h1>Anatomy of a tool</h1>
+    <p class="lede">A tool definition is the contract between Claude and your code. The single biggest lever on
+      whether the model uses a tool <em>correctly</em> isn't the code behind it — it's the <b>description</b> and
+      the <b>JSON schema</b>. Toggle a definition from sloppy to sharp and watch the model's behaviour flip.</p>
+    <div class="tagrow">
+      <span class="tag key">name</span><span class="tag key">description</span>
+      <span class="tag key">input_schema</span><span class="tag">required vs nullable</span>
+      <span class="tag">prompt-as-API</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    A tool is a button you give Claude to press. But Claude can't see the button — it can only read the
+    <b>label</b> you wrote on it. If the label says "do stuff," Claude presses it at the wrong times. If it says
+    "use this to look up a customer's order by their order number; returns status and ship date," Claude
+    presses it perfectly. Writing great labels <em>is</em> the job.
+  </div>
+
+  <h2>The four fields</h2>
+  <p>Every tool has the same skeleton. The model never sees your implementation — it sees only these fields and
+  reasons entirely from them:</p>
+  <table>
+    <tr><th>Field</th><th>What the model does with it</th></tr>
+    <tr><td><code>name</code></td><td>A short handle it emits when calling. Make it descriptive (<code>get_order_status</code>, not <code>tool3</code>).</td></tr>
+    <tr><td><code>description</code></td><td><b>The most important field.</b> What it does, <em>when to use it</em>, when <em>not</em> to, side effects, units, and what it returns. Treat it like docs for a junior dev who can't ask questions.</td></tr>
+    <tr><td><code>input_schema</code></td><td>A JSON Schema of the parameters: types, which are <code>required</code>, allowed enums, formats, and per-field descriptions.</td></tr>
+    <tr><td><em>(your code)</em></td><td>Runs when the model emits <code>tool_use</code>. The model never sees it — only the <code>tool_result</code> you return.</td></tr>
+  </table>
+
+  <h2>Sloppy vs sharp — flip the switch</h2>
+  <div class="panel">
+    <div class="btnrow">
+      <button id="bad" class="ghost">😴 Sloppy definition</button>
+      <button id="good">✨ Sharp definition</button>
+    </div>
+    <pre id="def"></pre>
+    <p id="effect" class="note"></p>
+  </div>
+
+  <h2>Required vs nullable — the field that trips people</h2>
+  <p>A parameter the model <em>must</em> supply goes in <code>required</code>. But what about a field that's
+  optional or sometimes genuinely unknown? Don't just leave it out — model it explicitly. A field that can be
+  absent should be typed to <b>allow null</b> (<code>"type": ["string", "null"]</code>) and its description
+  should say <em>when</em> null is correct. Otherwise the model invents a value to fill the gap — the root cause
+  of hallucinated arguments in extraction tasks (Domain 4).</p>
+
+  <div class="note clay"><b>Exam trap:</b> when a tool is misused, the fix is almost always <b>"improve the
+  description / schema,"</b> not "add more tools" or "switch models." Distractors love suggesting a heavier
+  hammer. Also: marking everything <code>required</code> forces the model to fabricate values it doesn't have —
+  make truly-optional fields nullable and say so.</div>
+
+  <div class="note green"><b>Takeaways:</b> a tool = <b>name + description + input_schema</b> (the model never
+  sees your code). The <b>description is the API</b> — say what it does, when to use it, when not to, side
+  effects, and return shape. In the schema, mark only genuinely-mandatory fields <b>required</b>, and make
+  optional/unknown fields <b>nullable</b> with a description of when null applies. Bad tool behaviour → fix the
+  words, not the model.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview" target="_blank" rel="noopener">Anthropic — Tool use</a> ·
+  <a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Writing tools for agents</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 2.
+    Next: <a href="structured-errors.html">structured errors & retry loops →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const BAD = `{
+  "name": "order",
+  "description": "gets order stuff",
+  "input_schema": {
+    "type": "object",
+    "properties": { "id": { "type": "string" } },
+    "required": ["id"]
+  }
+}`;
+  const GOOD = `{
+  "name": "get_order_status",
+  "description": "Look up a single customer order by its numeric order ID. Use when the user asks where an order is, whether it shipped, or if it can still be cancelled. Do NOT use for refunds (see issue_refund). Returns: status, ship_date, estimated_delivery, cancellable (bool). Read-only, no side effects.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "integer",
+        "description": "The order's numeric ID, e.g. 4471. Digits only — strip any leading '#'."
+      },
+      "include_line_items": {
+        "type": ["boolean", "null"],
+        "description": "If true, also return each item. Null/omit if the user only asked about status."
+      }
+    },
+    "required": ["order_id"]
+  }
+}`;
+  const E_BAD = '<b>Result:</b> vague <code>name</code>/<code>description</code> and an untyped <code>id</code> → the model calls it for refunds too, passes <code>"#4471"</code> (with the hash), and guesses fields. Garbage in.';
+  const E_GOOD = '<b>Result:</b> the model knows exactly <em>when</em> to call it, sends <code>order_id: 4471</code> as an integer, leaves the optional flag null, and never reaches for it on refund requests. Same code behind it — radically better behaviour.';
+  function show(good){ $('#def').textContent = good ? GOOD : BAD;
+    $('#effect').className = 'note ' + (good ? 'green' : '');
+    $('#effect').innerHTML = good ? E_GOOD : E_BAD; }
+  $('#good').addEventListener('click', () => show(true));
+  $('#bad').addEventListener('click', () => show(false));
+  show(false);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Few-shot prompting — teach by example</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 4 · Prompt Engineering (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 4 · Prompt Engineering &amp; Structured Output</span>
+    <h1>Few-shot prompting</h1>
+    <p class="lede">When a task is ambiguous, don't add more adjectives — add <b>examples</b>. Showing Claude
+      2–5 input→output pairs (<b>few-shot</b>) pins down the exact format, edge-case handling, and tone far more
+      reliably than describing them. Add examples one at a time and watch the model's output snap into shape.</p>
+    <div class="tagrow">
+      <span class="tag key">zero / one / few-shot</span><span class="tag key">edge cases</span>
+      <span class="tag">format locking</span><span class="tag">consistency</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Telling someone "sort these toys nicely" is confusing — nice how? But if you <b>show</b> them: "see, red ones
+    here, blue ones there, broken ones in the bin" — now they get it instantly and can do the rest themselves.
+    Examples teach faster than instructions. Claude is the same: <b>show, don't just tell.</b>
+  </div>
+
+  <h2>Add examples — watch reliability climb</h2>
+  <p>The task: classify a customer message into <code>billing</code> / <code>technical</code> /
+  <code>cancellation</code>, and flag urgency. Start with zero examples and add them. Notice how the tricky
+  "mixed" message gets handled correctly only once an example shows how:</p>
+
+  <div class="panel">
+    <div class="btnrow">
+      <button id="add">+ Add an example</button>
+      <button id="reset" class="ghost">Reset to zero-shot</button>
+      <span class="muted small" id="count" style="margin-left:auto;"></span>
+    </div>
+    <pre id="prompt"></pre>
+    <div class="small muted" style="margin:10px 0 4px;">Model output on the test input <code>"App keeps crashing AND you double-charged me, fix it now!!"</code>:</div>
+    <p id="out" class="note"></p>
+  </div>
+
+  <h2>How many, and which?</h2>
+  <ul>
+    <li><b>How many:</b> usually 2–5. One example sets the format; a few cover the variations. More isn't always
+      better — past a point you spend tokens for little gain.</li>
+    <li><b>Pick edge cases:</b> include the tricky inputs (ambiguous, empty, multi-label) — those are what the
+      model gets wrong without a demonstration.</li>
+    <li><b>Be consistent:</b> every example must follow the <em>exact</em> output format you want. The model copies
+      your formatting faithfully — including any mistakes.</li>
+    <li><b>Wrap them:</b> put examples in <code>&lt;example&gt;</code> tags so they're clearly demonstrations, not
+      part of the live input.</li>
+  </ul>
+
+  <div class="note clay"><b>Exam trap:</b> for an <em>ambiguous</em> or inconsistent task, the right fix is
+  <b>few-shot examples</b>, not "write a longer description" or "raise the temperature." And the examples must be
+  <b>consistent</b> and cover the <b>edge cases</b> — a sloppy or all-easy example set is a distractor that looks
+  helpful but doesn't fix the failure.</div>
+
+  <div class="note green"><b>Takeaways:</b> ambiguity → add <b>examples</b>, not adjectives. <b>2–5</b>
+  consistent input→output pairs lock the format and teach edge-case handling better than prose. Choose examples
+  that cover the <b>hard cases</b>, keep the format identical across them, and wrap them in
+  <code>&lt;example&gt;</code> tags.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/multishot-prompting" target="_blank" rel="noopener">Anthropic — Multishot (few-shot) prompting</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 4.
+    Next: <a href="structured-output.html">structured output & JSON schemas →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const EX = [
+    '<example>\\n  input: "I can\'t log in, password reset is broken"\\n  output: {category: "technical", urgency: "normal"}\\n</example>',
+    '<example>\\n  input: "Cancel my subscription immediately, I\'m furious"\\n  output: {category: "cancellation", urgency: "high"}\\n</example>',
+    '<example>  // shows how to handle a MIXED message → pick the costliest category\\n  input: "Slow app and you charged me twice"\\n  output: {category: "billing", urgency: "high", secondary: "technical"}\\n</example>',
+  ];
+  const OUT = [
+    { n:false, t:'<b>{category: "technical"}</b> — guessed one label, ignored the billing problem and the urgency. Zero-shot has no idea you wanted multi-label or an urgency field.' },
+    { n:false, t:'<b>{category: "technical", urgency: "high"}</b> — now it adds urgency (copied the format), but still drops the double-charge. One example fixed the shape, not the mixed-message logic.' },
+    { n:false, t:'<b>{category: "technical", urgency: "high"}</b> — format is solid, but with only "single-issue" examples it still mishandles the message that has TWO issues.' },
+    { n:true,  t:'<b>{category: "billing", urgency: "high", secondary: "technical"}</b> — ✅ correct! The mixed-case example taught it to pick the costliest category and record the secondary one. Edge-case example = fixed behaviour.' },
+  ];
+  let k = 0;
+  function render(){
+    const sys = 'Classify the message into billing / technical / cancellation and rate urgency.';
+    const shown = EX.slice(0, k).join('\\n\\n');
+    $('#prompt').textContent = sys + (k? '\\n\\n' + shown : '\\n\\n(no examples yet — zero-shot)') +
+      '\\n\\ninput: "App keeps crashing AND you double-charged me, fix it now!!"';
+    const o = OUT[k]; $('#out').className = 'note ' + (o.n?'green':''); $('#out').innerHTML = o.t;
+    $('#count').textContent = k + ' / ' + EX.length + ' examples';
+    $('#add').disabled = k >= EX.length;
+  }
+  $('#add').addEventListener('click', ()=>{ if(k<EX.length){k++; render();} });
+  $('#reset').addEventListener('click', ()=>{ k=0; render(); });
+  render();
+})();
+</script>
+</body>
+</html>

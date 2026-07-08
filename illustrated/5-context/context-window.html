@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The context window — the model's working memory</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 5 · Context & Reliability (15%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 5 · Context Management &amp; Reliability</span>
+    <h1>The context window</h1>
+    <p class="lede">Everything Claude "knows" in a single request — the system prompt, tools, the whole
+      conversation, retrieved documents, <em>and</em> the answer it's about to write — has to fit in one
+      finite budget of <b>tokens</b>: the context window. Fill the window below and watch what gets squeezed,
+      why quality drops near the edge, and where the answer goes when there's no room left.</p>
+    <div class="tagrow">
+      <span class="tag key">tokens</span><span class="tag key">token budget</span>
+      <span class="tag">system + tools + history</span><span class="tag">output reservation</span>
+      <span class="tag">context rot</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine Claude has a <b>desk</b> of a fixed size. Everything it needs to do the job has to fit on the desk at
+    once: the instructions, the books it's reading, the whole chat so far — <em>and</em> empty space to write the
+    answer. If you pile too many books on, there's no room to write, and things start sliding off the edges. A
+    good architect keeps the desk tidy: only the books you need, summaries instead of whole chapters.
+  </div>
+
+  <h2>Pack the window</h2>
+  <p>A token is roughly ¾ of a word. Slide each part of the request and watch the budget. Two things to notice:
+  the <b>output needs reserved space</b> (if input eats it all, the answer gets truncated), and as you approach
+  the limit, models get slower and more error-prone — recall in the "muddy middle" of a stuffed window degrades
+  (sometimes called <b>context rot</b>).</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>system + tools <span class="val"></span></label><input id="sys" type="range" min="0" max="40" value="8"></div>
+      <div class="ctrl"><label>conversation history <span class="val"></span></label><input id="hist" type="range" min="0" max="120" value="20"></div>
+      <div class="ctrl"><label>retrieved docs (RAG) <span class="val"></span></label><input id="rag" type="range" min="0" max="160" value="30"></div>
+      <div class="ctrl"><label>reserve for output <span class="val"></span></label><input id="out" type="range" min="2" max="32" value="8"></div>
+    </div>
+    <svg id="bar" viewBox="0 0 600 70" role="img" aria-label="context window fill"></svg>
+    <p id="status" class="note"></p>
+  </div>
+
+  <h2>What lives in the window</h2>
+  <table>
+    <tr><th>Segment</th><th>Notes</th></tr>
+    <tr><td><b>System prompt</b></td><td>Role + standing instructions. Fixed cost every turn.</td></tr>
+    <tr><td><b>Tool definitions</b></td><td>Every tool's name/description/schema is tokens, every turn. Too many tools = bloat + worse selection.</td></tr>
+    <tr><td><b>Conversation history</b></td><td>Grows every turn in an agent loop — the main thing that fills long runs.</td></tr>
+    <tr><td><b>Retrieved context (RAG)</b></td><td>Documents you inject. Retrieve <em>relevant</em> chunks, not everything.</td></tr>
+    <tr><td><b>Output reservation</b></td><td><code>max_tokens</code> for the reply. Must fit alongside the input.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> "just use the biggest context window" is not the architect's answer.
+  Bigger windows cost more, run slower, and still suffer recall loss when stuffed. The discipline is <b>context
+  engineering</b> — put in only what's needed (relevant retrieval, summaries, scoped tools), reserve output
+  space, and <b>compact</b> long histories (next explainer) rather than letting them grow unbounded.</div>
+
+  <div class="note green"><b>Takeaways:</b> the context window is a <b>fixed token budget</b> shared by system
+  prompt, tools, history, retrieved docs, <em>and</em> the reserved output. Stuffing it costs money, adds latency,
+  and degrades recall (<b>context rot</b>). Engineer context deliberately: relevant-only retrieval, scoped tools,
+  reserved <code>max_tokens</code>, and compaction for long runs.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Effective context engineering for AI agents</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 5.
+    Next: <a href="prompt-caching.html">prompt caching →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, slider = Ill.slider;
+  const CAP = 200; // 200k window, in "k" units
+  const segs = [['sys','system+tools','var(--violet)'],['hist','history','var(--clay)'],['rag','RAG docs','var(--blue)'],['out','output','var(--green)']];
+  segs.forEach(([id])=>slider($('#'+id), v=>v+'k tok', render));
+  function render(){
+    const vals = { sys:+$('#sys').value, hist:+$('#hist').value, rag:+$('#rag').value, out:+$('#out').value };
+    const input = vals.sys+vals.hist+vals.rag, total = input+vals.out;
+    const svg=$('#bar'); svg.innerHTML='';
+    svg.appendChild(el('rect',{x:0,y:18,width:600,height:34,rx:8,fill:'var(--light)',stroke:'var(--border)'}));
+    let x=0; const scale=600/CAP;
+    segs.forEach(([id,label,c])=>{ const w=vals[id]*scale; if(w<=0) return;
+      svg.appendChild(el('rect',{x,y:18,width:Math.max(0,Math.min(w,600-x)),height:34,fill:c,opacity:.85}));
+      if(w>40) svg.appendChild(el('text',{x:x+w/2,y:39,'text-anchor':'middle','font-size':10,fill:'#fff','font-weight':'600',text:label}));
+      x+=w; });
+    // cap line
+    svg.appendChild(el('line',{x1:600,y1:10,x2:600,y2:60,stroke:'var(--ink)','stroke-width':2}));
+    svg.appendChild(el('text',{x:596,y:14,'text-anchor':'end','font-size':10,fill:'var(--muted)',text:CAP+'k limit'}));
+    let msg,cls;
+    if(total>CAP){ msg='🛑 <b>Over budget by '+(total-CAP)+'k.</b> The request won\'t fit — you must trim history (compaction), retrieve fewer docs, or shrink the output reservation.'; cls=''; }
+    else if(input>CAP-vals.out){ msg='⚠ Input is crowding the output space — the reply may be <b>truncated</b>. Reserve enough <code>max_tokens</code>.'; cls=''; }
+    else if(total>CAP*0.8){ msg='⚠ <b>'+Math.round(total/CAP*100)+'% full.</b> Working, but you\'re in the danger zone: rising cost/latency and weaker recall in the middle. Time to compact.'; cls=''; }
+    else { msg='✅ <b>'+Math.round(total/CAP*100)+'% full.</b> Comfortable. Output space reserved, recall strong. This is the tidy desk you want.'; cls='green'; }
+    $('#status').className='note '+cls; $('#status').innerHTML=msg;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop control & guardrails — keeping an agent on the rails</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 1 · Agentic Architecture (27%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 1 · Agentic Architecture</span>
+    <h1>Loop control &amp; guardrails</h1>
+    <p class="lede">A free-running loop is a budget bonfire waiting to happen. The difference between a demo and
+      a production agent is the set of <b>guardrails</b> around the loop: hard limits, human checkpoints, and
+      input/output validation. Tune the dials below and watch an agent run safely — or spiral.</p>
+    <div class="tagrow">
+      <span class="tag key">max turns</span><span class="tag key">token budget</span>
+      <span class="tag key">human-in-the-loop</span><span class="tag">stop conditions</span>
+      <span class="tag">output validation</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Picture a toy car that drives itself around a table. Without a fence it'll happily zoom right off the edge.
+    <b>Guardrails</b> are the fences: "stop after 20 laps" (max turns), "stop when the battery's half gone"
+    (budget), and "ask a grown-up before crossing the road" (human approval for risky moves). The car still
+    drives itself — it just can't hurt itself or anyone else.
+  </div>
+
+  <h2>Drive the agent — with and without rails</h2>
+  <p>Below, an autonomous agent is chewing through a task. Each turn costs tokens and might be a wasted retry.
+  Set the guardrails and run it. Watch which <b>stop condition</b> fires first — a successful finish, a hard
+  limit, or a budget cap. The goal of Domain 1 isn't to make agents that never stop; it's to guarantee they
+  <em>always</em> stop, for a reason you chose.</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>max turns <span class="val"></span></label>
+        <input id="maxturns" type="range" min="3" max="30" value="12"></div>
+      <div class="ctrl"><label>token budget <span class="val"></span></label>
+        <input id="budget" type="range" min="2000" max="40000" step="1000" value="16000"></div>
+      <div class="ctrl"><label>require human OK on risky tool</label>
+        <select id="hitl"><option value="yes">yes (safe)</option><option value="no">no (auto-approve)</option></select></div>
+    </div>
+    <div class="btnrow"><button id="run">Run agent ▶</button><span class="muted small" id="status" style="margin-left:auto;"></span></div>
+    <div id="tape" style="font-family:var(--mono);font-size:12.5px;background:var(--light);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-height:140px;"></div>
+  </div>
+
+  <h2>The guardrail toolkit</h2>
+  <table>
+    <tr><th>Guardrail</th><th>Stops…</th><th>Layer</th></tr>
+    <tr><td><b>Max turns / steps</b></td><td>infinite loops where the model keeps "almost" finishing.</td><td>harness</td></tr>
+    <tr><td><b>Token / cost budget</b></td><td>a correct-but-expensive run that quietly burns $$$.</td><td>harness</td></tr>
+    <tr><td><b>Human-in-the-loop</b></td><td>irreversible actions (refunds, deletes, emails) going out unreviewed.</td><td>before the tool runs</td></tr>
+    <tr><td><b>Input guardrail</b></td><td>prompt injection / off-topic / unsafe requests entering the loop.</td><td>before the model turn</td></tr>
+    <tr><td><b>Output guardrail</b></td><td>unsafe, off-policy, or malformed answers reaching the user.</td><td>after the model turn</td></tr>
+    <tr><td><b>Tool allow-list / scoping</b></td><td>the agent reaching tools it shouldn't have for this task.</td><td>tool layer</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> "the model decides when to stop" is <em>not</em> a stop condition —
+  it's the thing you're guarding against. A reliable agent has at least one <b>external</b> cap (turns and/or
+  budget) the model cannot talk its way past, plus human approval on <b>consequential, irreversible</b> actions.
+  "Add retries" is also a trap if the retry has no ceiling — bounded retries only.</div>
+
+  <div class="note green"><b>Takeaways:</b> every loop needs an <b>external</b> stop the model can't override —
+  <b>max turns</b> and a <b>token/cost budget</b>. Put a <b>human checkpoint</b> before irreversible actions.
+  Add <b>input</b> and <b>output</b> guardrails around the loop, and <b>scope tools</b> to the task. The model
+  finishing on its own is the happy path, not the safety net.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building Effective Agents (stop conditions & human oversight)</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 1.
+    Next domain: <a href="../3-claude-code/claudemd-hierarchy.html">Claude Code configuration →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, slider = Ill.slider;
+  slider($('#maxturns'), v => v + ' turns');
+  slider($('#budget'), v => (v/1000) + 'k tokens');
+
+  $('#run').addEventListener('click', () => {
+    const maxT = +$('#maxturns').value, budget = +$('#budget').value, hitl = $('#hitl').value === 'yes';
+    const tape = $('#tape'); tape.innerHTML = '';
+    let turn = 0, spent = 0, done = false, stopReason = '';
+    // scripted-ish run: task "completes" at turn 9 if allowed to get there
+    const RISKY_TURN = 5, FINISH_TURN = 9;
+    const r = Ill.rng(7);
+    while (true) {
+      turn++;
+      const cost = 1200 + Math.floor(r()*1400);
+      spent += cost;
+      let line = 'turn ' + String(turn).padStart(2,' ') + '  ·  +' + cost + ' tok  (Σ ' + spent + ')';
+      // checks BEFORE acting
+      if (turn > maxT) { stopReason = '🛑 STOP — max turns (' + maxT + ') reached. Agent halted by harness.'; turn--; break; }
+      if (spent > budget) { stopReason = '🛑 STOP — token budget (' + budget + ') exceeded. Agent halted.'; break; }
+      if (turn === RISKY_TURN) {
+        if (hitl) line += '   ⏸ risky tool «issue_refund» → waiting for human OK → approved ✓';
+        else      line += '   ⚠ risky tool «issue_refund» → auto-approved (no human gate!)';
+      }
+      tape.appendChild(el('div', { text: line, style:{padding:'2px 0'} }));
+      if (turn >= FINISH_TURN) { done = true; stopReason = '✅ DONE — model returned a final answer at turn ' + turn + ', within all limits.'; break; }
+    }
+    tape.appendChild(el('div', { html: '<b>' + stopReason + '</b>', style:{padding:'8px 0 0', color: done ? 'var(--green)' : 'var(--red)'} }));
+    if (!hitl) tape.appendChild(el('div', { html:'<span style="color:var(--red)">↑ note: a refund went out with no human review. In production that\'s the failure auditors flag.</span>', style:{padding:'4px 0'} }));
+    $('#status').textContent = done ? 'finished cleanly' : 'halted by guardrail';
+  });
+  $('#run').click();
+})();
+</script>
+</body>
+</html>

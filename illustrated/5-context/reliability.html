@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability & escalation — knowing when to hand off</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 5 · Context & Reliability (15%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 5 · Context Management &amp; Reliability</span>
+    <h1>Reliability &amp; escalation</h1>
+    <p class="lede">A reliable agent isn't one that always succeeds — it's one that <b>knows its limits</b> and
+      hands off cleanly when it hits them. The skill the exam tests is designing <b>escalation triggers</b> and
+      stopping <b>error propagation</b>, so a single failure degrades gracefully instead of cascading into a
+      confident wrong answer.</p>
+    <div class="tagrow">
+      <span class="tag key">escalation triggers</span><span class="tag key">error propagation</span>
+      <span class="tag key">graceful degradation</span><span class="tag">human handoff</span>
+      <span class="tag">confidence</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    A good lifeguard isn't the one who never needs help — it's the one who <b>blows the whistle and calls for
+    backup</b> the moment something's beyond them, instead of pretending everything's fine. An agent should do the
+    same: when it's unsure, when the stakes are high, or when a tool keeps failing, it should <b>escalate to a
+    human</b> — not bluff its way through and make things worse.
+  </div>
+
+  <h2>Decide: handle, retry, or escalate?</h2>
+  <p>Pick a situation and choose the agent's move. The reliable answer often isn't "try harder" — it's "stop and
+  escalate." See which trigger fires:</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>situation</label>
+      <select id="sit">
+        <option value="0">customer asks a routine "where's my order?"</option>
+        <option value="1">customer demands a $5,000 refund (policy cap: $200)</option>
+        <option value="2">the orders database has timed out 3 times in a row</option>
+        <option value="3">customer is threatening legal action</option>
+        <option value="4">model's own confidence in the answer is low / ambiguous</option>
+      </select></div>
+    <div id="answer"></div>
+  </div>
+
+  <h2>Escalation triggers worth wiring in</h2>
+  <table>
+    <tr><th>Trigger</th><th>Why escalate</th></tr>
+    <tr><td><b>Exceeds authority</b></td><td>Action is beyond the agent's policy limits (refund cap, account deletion).</td></tr>
+    <tr><td><b>Low confidence / ambiguity</b></td><td>The agent isn't sure — better to ask than to guess on something that matters.</td></tr>
+    <tr><td><b>Repeated tool failure</b></td><td>A dependency is down; retrying forever wastes turns and frustrates the user.</td></tr>
+    <tr><td><b>High emotional / legal stakes</b></td><td>Threats, safety, legal, or vulnerable-user signals need a human.</td></tr>
+    <tr><td><b>Loop / budget limit hit</b></td><td>The guardrail tripped (Domain 1) — hand off rather than fail silently.</td></tr>
+  </table>
+
+  <h3>Stopping error propagation</h3>
+  <p>In a multi-step or multi-agent flow, a wrong/missing result from step 2 must not be silently consumed by
+  step 5 as if it were valid. Propagate <b>status</b> alongside data: mark a result <code>partial</code> or
+  <code>failed</code>, and have downstream steps check it. The synthesis must <b>account for the gap</b> — degrade
+  explicitly ("I couldn't verify X") rather than presenting an incomplete result as complete.</p>
+
+  <div class="note clay"><b>Exam trap:</b> "keep retrying until it works" and "give the best guess anyway" are
+  both wrong when the situation calls for a human. Reliability = <b>explicit</b> escalation on the right triggers
+  and <b>visible</b> degradation, never a confident answer built on a failed/partial step. Silent failure is the
+  cardinal sin.</div>
+
+  <div class="note green"><b>Takeaways:</b> reliable agents <b>escalate</b> on clear triggers — exceeds
+  authority, low confidence, repeated failure, high stakes, or a tripped guardrail — instead of bluffing. Stop
+  <b>error propagation</b> by carrying status (<code>partial</code>/<code>failed</code>) with data and degrading
+  <b>explicitly</b>. A clean handoff beats a confident wrong answer every time.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building Effective Agents (human oversight)</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 5 — last topic.
+    Back to the <a href="../index.html">full catalog →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const A = [
+    { pick:'Handle', cls:'note green', t:'<b>→ Handle it.</b> Routine, within authority, low stakes. Look up the order and answer. Escalating everything would make the agent useless — escalate by exception, not by default.' },
+    { pick:'Escalate — exceeds authority', cls:'note', t:'<b>→ Escalate.</b> $5,000 is 25× the $200 policy cap. The agent must NOT issue it and must NOT pretend it can — it hands off to a human with authority, explaining the cap. Exceeding authority is a hard escalation trigger.' },
+    { pick:'Escalate — repeated tool failure', cls:'note', t:'<b>→ Stop retrying, escalate.</b> Three timeouts means the dependency is down; a fourth try just burns a turn. Degrade explicitly ("I can\'t reach order records right now") and route to a human or a fallback — don\'t guess the order status.' },
+    { pick:'Escalate — high stakes', cls:'note', t:'<b>→ Escalate immediately.</b> Legal threats are out of scope for an autonomous agent. Hand to a human (and likely log/flag it). Stakes + safety override "first-contact resolution" targets.' },
+    { pick:'Escalate — low confidence', cls:'note', t:'<b>→ Ask or escalate.</b> When the agent is genuinely unsure, the reliable move is to ask a clarifying question or hand off — not to emit a confident guess. Calibrated uncertainty beats false confidence on anything that matters.' },
+  ];
+  const sel=$('#sit');
+  function show(){ const a=A[+sel.value]; $('#answer').innerHTML =
+    '<div class="'+a.cls+'"><span class="chip sel" style="margin-bottom:8px;display:inline-block;">Move: '+a.pick+'</span><br>'+a.t+'</div>'; }
+  sel.addEventListener('change',show); show();
+})();
+</script>
+</body>
+</html>

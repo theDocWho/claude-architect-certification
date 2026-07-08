@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP architecture — the USB-C port for AI tools</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 2 · Tool Design & MCP (18%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 2 · Tool Design & MCP</span>
+    <h1>MCP architecture</h1>
+    <p class="lede">The <b>Model Context Protocol</b> is an open standard that lets any AI app plug into any tool
+      or data source through one common socket — like USB-C did for chargers. Instead of writing custom glue for
+      every integration, you run an <b>MCP server</b> that exposes tools, resources, and prompts, and any
+      <b>MCP client</b> (Claude Desktop, Claude Code, your app) can use them.</p>
+    <div class="tagrow">
+      <span class="tag key">host / client / server</span><span class="tag key">tools</span>
+      <span class="tag">resources</span><span class="tag">prompts</span>
+      <span class="tag">stdio vs HTTP</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Remember when every phone had a different charger and nothing fit anything? Then USB-C came and one plug
+    worked everywhere. <b>MCP is USB-C for AI.</b> Before it, hooking Claude up to your files, your database, or
+    GitHub each needed its own special cable. With MCP, anyone builds <b>one plug</b> (a server) and <b>any</b> AI
+    app can use it. Build it once, plug in anywhere.
+  </div>
+
+  <h2>Host, client, server — who's who</h2>
+  <p>MCP has three roles. Hover the diagram pieces. The key insight: the <b>server</b> is reusable across every
+  host, and the <b>host</b> can connect many servers at once. That many-to-many web is what makes the ecosystem
+  compound.</p>
+
+  <div class="panel">
+    <svg id="diagram" viewBox="0 0 600 290" role="img" aria-label="MCP architecture"></svg>
+    <p id="info" class="note">Hover a box to see its role.</p>
+  </div>
+
+  <h2>What a server can expose</h2>
+  <table>
+    <tr><th>Primitive</th><th>What it is</th><th>Example</th></tr>
+    <tr><td><b>Tools</b></td><td>Actions the model can <em>call</em> (model-controlled) — same anatomy as native tools.</td><td><code>create_issue</code>, <code>run_query</code></td></tr>
+    <tr><td><b>Resources</b></td><td>Read-only data the host can <em>attach</em> as context (app-controlled).</td><td>a file, a DB row, a wiki page</td></tr>
+    <tr><td><b>Prompts</b></td><td>Reusable prompt templates a user can <em>invoke</em> (user-controlled).</td><td>a "/summarize-PR" template</td></tr>
+  </table>
+
+  <h2>How it connects: transports</h2>
+  <p>A client talks to a server over a <b>transport</b>. Two common ones: <b>stdio</b> — the server runs as a
+  local subprocess, ideal for local tools (your filesystem, a local DB); and <b>streamable HTTP</b> — the server
+  runs remotely, ideal for shared/hosted integrations with auth. Choosing the transport is a deployment decision:
+  local-and-private → stdio; shared-and-networked → HTTP.</p>
+
+  <div class="note clay"><b>Exam trap:</b> MCP doesn't replace good tool design — an MCP tool with a vague
+  description fails exactly like a native one (see <a href="tool-anatomy.html">Anatomy of a tool</a>). MCP solves
+  <em>distribution</em> (one server, many hosts), not <em>quality</em>. Also know the direction: <b>tools</b> are
+  model-controlled, <b>resources</b> are app-controlled, <b>prompts</b> are user-controlled.</div>
+
+  <div class="note green"><b>Takeaways:</b> MCP = an open standard ("USB-C for AI") with three roles —
+  <b>host</b> (the app), <b>client</b> (the connector inside it), <b>server</b> (your reusable integration).
+  Servers expose <b>tools</b> (callable), <b>resources</b> (attachable data), and <b>prompts</b> (templates), over
+  <b>stdio</b> (local) or <b>HTTP</b> (remote). Build a server once; every MCP host can use it. It standardises
+  <em>connection</em>, not tool quality.</div>
+
+  <p class="small muted">Curated companion: <a href="https://modelcontextprotocol.io/introduction" target="_blank" rel="noopener">modelcontextprotocol.io — Introduction</a> ·
+  <a href="https://docs.anthropic.com/en/docs/agents-and-tools/mcp" target="_blank" rel="noopener">Anthropic — MCP</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 2.
+    Next domain: <a href="../1-agentic/agent-loop.html">the agent loop →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, box = Ill.box, arrow = Ill.arrow;
+  const C = { host:['#fbeee8','#b35a3f'], client:['#fdf4e7','#c08a2e'], server:['#e7f3ec','#3d8a5f'], ext:['#f2efe9','#6b6357'] };
+  const INFO = {
+    host:'<b>Host</b> — the AI application the user interacts with (Claude Desktop, Claude Code, your own app). It manages the model and decides which servers to connect.',
+    client:'<b>Client</b> — a connector living inside the host. There is one client per server connection; it speaks the MCP protocol and relays tool calls + results.',
+    server:'<b>Server</b> — your reusable integration. It exposes tools, resources, and prompts. Run it once and any MCP host can connect — this is the whole point of the standard.',
+    ext:'<b>The real system</b> — your database, filesystem, GitHub, etc. The server is the thin, standard adapter in front of it.',
+  };
+  function render() {
+    const svg = $('#diagram'); svg.innerHTML = '';
+    const host = box(svg, 130, 70, 160, 50, ['Host app', '(Claude / your app)'], ...C.host);
+    const c1 = box(svg, 130, 165, 120, 40, ['MCP client'], ...C.client);
+    const s1 = box(svg, 360, 110, 150, 44, ['MCP server', '«github»'], ...C.server);
+    const s2 = box(svg, 360, 210, 150, 44, ['MCP server', '«postgres»'], ...C.server);
+    const e1 = box(svg, 540, 110, 90, 40, ['GitHub API'], ...C.ext);
+    const e2 = box(svg, 540, 210, 90, 40, ['Postgres'], ...C.ext);
+    arrow(svg, host.x, host.y+host.h/2, c1.x, c1.y-c1.h/2, 'var(--clay-deep)', '');
+    arrow(svg, c1.x+c1.w/2, c1.y-8, s1.x-s1.w/2, s1.y, 'var(--green)', 'MCP');
+    arrow(svg, c1.x+c1.w/2, c1.y+8, s2.x-s2.w/2, s2.y, 'var(--green)', 'MCP');
+    arrow(svg, s1.x+s1.w/2, s1.y, e1.x-e1.w/2, e1.y, 'var(--muted)', '');
+    arrow(svg, s2.x+s2.w/2, s2.y, e2.x-e2.w/2, e2.y, 'var(--muted)', '');
+    // hover wiring
+    const hit = [['host',55,45,160,50],['client',70,145,120,40],['server',285,88,150,44],['server',285,188,150,44],['ext',495,90,90,40],['ext',495,190,90,40]];
+    hit.forEach(([k,x,y,w,h]) => { const r = el('rect',{x,y,width:w,height:h,fill:'transparent',style:{cursor:'pointer'}});
+      r.addEventListener('mouseenter',()=>{$('#info').innerHTML=INFO[k];}); svg.appendChild(r); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

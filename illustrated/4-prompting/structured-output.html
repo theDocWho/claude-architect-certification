@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structured output — JSON schemas, nullable fields & retries</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 4 · Prompt Engineering (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 4 · Prompt Engineering &amp; Structured Output</span>
+    <h1>Structured output</h1>
+    <p class="lede">When another program will consume Claude's answer, you don't want prose — you want
+      <b>reliable JSON</b> that matches a schema every time. The trick is to use <b>tool_use</b> as a typed output
+      contract, handle <b>nullable</b> fields honestly, and wrap it in a <b>validation-retry loop</b>. This is the
+      "Structured Data Extraction" exam scenario.</p>
+    <div class="tagrow">
+      <span class="tag key">tool_use as schema</span><span class="tag key">nullable fields</span>
+      <span class="tag key">validation-retry</span><span class="tag">batch API</span>
+      <span class="tag">prefill / JSON mode</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine you want answers on a <b>form with labelled boxes</b> instead of a messy paragraph — name here, age
+    there. A <b>JSON schema</b> is that form. If Claude doesn't know someone's age, the honest move is to leave
+    the box <b>blank</b> (null), not to make up "42." And if it scribbles outside the lines, you hand the form
+    back and say "fill box 3 properly," until it's right. Forms, not essays — and blanks are allowed.
+  </div>
+
+  <h2>The reliable pattern: tool_use as a contract</h2>
+  <p>Rather than asking for JSON in prose and hoping, you define a <b>tool</b> whose <code>input_schema</code> is
+  exactly the shape you want, and let Claude "call" it. Because the API enforces the schema, you get typed,
+  predictable fields. Extract a messy invoice and watch the structured result:</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>source document (messy, real-world)</label>
+      <select id="doc">
+        <option value="full">complete invoice</option>
+        <option value="partial">invoice missing the due date</option>
+        <option value="garbled">half-garbled OCR scan</option>
+      </select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div><div class="small muted" style="margin-bottom:6px;">document</div><pre id="src" style="font-size:12px;"></pre></div>
+      <div><div class="small muted" style="margin-bottom:6px;">extracted (schema-valid)</div><pre id="json" style="font-size:12px;"></pre></div>
+    </div>
+    <p id="note" class="note"></p>
+  </div>
+
+  <h2>The non-negotiables</h2>
+  <ul>
+    <li><b>Nullable, not invented:</b> fields that may be absent are typed <code>["string","null"]</code> and the
+      description says "null if not present." This stops the model fabricating a plausible-but-wrong value.</li>
+    <li><b>Validation-retry loop:</b> validate the output against the schema; on failure, return the precise error
+      and let Claude fix it — <b>bounded</b> to a few attempts (Domain 2's structured-error idea).</li>
+    <li><b>Batch at scale:</b> extracting from thousands of docs? Use the <b>Message Batches API</b> — ~50% cheaper,
+      async, built for high-volume non-realtime jobs.</li>
+    <li><b>Multi-pass for hard docs:</b> extract → a second pass <em>verifies/critiques</em> the extraction
+      (evaluator–optimizer) for accuracy-critical data.</li>
+  </ul>
+
+  <div class="note clay"><b>Exam trap:</b> for a missing field the correct design is an explicit <b>null</b>, not
+  an empty string, a guess, or omitting it silently. Marking every field <code>required</code> forces
+  fabrication. And for bulk extraction the right tool is the <b>Batch API</b> (cost + throughput), not a hot loop
+  of real-time calls.</div>
+
+  <div class="note green"><b>Takeaways:</b> get reliable JSON by using <b>tool_use</b> as a typed schema
+  contract. Model genuinely-optional fields as <b>nullable</b> (null beats a fabricated value), and enforce shape
+  with a <b>bounded validation-retry loop</b>. For high volume use the <b>Message Batches API</b>; for
+  accuracy-critical extraction add a <b>verification pass</b>.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview" target="_blank" rel="noopener">Tool use (structured output)</a> ·
+  <a href="https://docs.anthropic.com/en/docs/build-with-claude/batch-processing" target="_blank" rel="noopener">Message Batches API</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 4.
+    Next: <a href="eval-driven.html">eval-driven prompting →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const DOCS = {
+    full: { src:'ACME Corp\\nInvoice #INV-7782\\nDate: 2026-03-01\\nDue: 2026-03-31\\nTotal: $4,250.00\\nBill to: Globex Ltd',
+      json:`{
+  "invoice_number": "INV-7782",
+  "issue_date": "2026-03-01",
+  "due_date": "2026-03-31",
+  "total": 4250.00,
+  "vendor": "ACME Corp",
+  "bill_to": "Globex Ltd"
+}`, n:true, t:'<b>Clean extraction.</b> Every field present, correctly typed (number, not "$4,250.00 string"). Schema satisfied.' },
+    partial: { src:'ACME Corp\\nInvoice #INV-7783\\nDate: 2026-03-02\\nTotal: $980.00\\nBill to: Initech',
+      json:`{
+  "invoice_number": "INV-7783",
+  "issue_date": "2026-03-02",
+  "due_date": null,           // ← not in the document
+  "total": 980.00,
+  "vendor": "ACME Corp",
+  "bill_to": "Initech"
+}`, n:true, t:'<b>The nullable field earns its keep.</b> There\'s no due date in the doc, so the honest output is <code>null</code> — NOT a guessed "+30 days". A required-only schema would have forced a fabricated date.' },
+    garbled: { src:'AC#E C0rp\\nInv0ice #INV-77??\\nDate: 2026-03-0?\\nTotal: $1,2?0.00',
+      json:`// validation FAILED → retry with error:
+// "invoice_number must match ^INV-\\\\d{4}$;
+//  total must be a number"
+// → Claude re-reads, returns best-effort
+//   + flags low confidence:
+{
+  "invoice_number": null,
+  "issue_date": null,
+  "due_date": null,
+  "total": null,
+  "_confidence": "low",
+  "_needs_human_review": true
+}`, n:false, t:'<b>Validation-retry + honesty.</b> The OCR is too garbled to trust. After a bounded retry, the right move is null fields plus a <code>needs_human_review</code> flag — never confident garbage. This is reliability over bravado.' },
+  };
+  const sel=$('#doc');
+  function show(){ const d=DOCS[sel.value]; $('#src').textContent=d.src.replace(/\\\\n/g,'\\n');
+    $('#json').textContent=d.json; $('#note').className='note '+(d.n?'green':''); $('#note').innerHTML=d.t; }
+  sel.addEventListener('change',show); show();
+})();
+</script>
+</body>
+</html>

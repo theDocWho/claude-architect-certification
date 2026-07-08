@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The parameters that matter — every knob, what it does, when to turn it</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Building with the Claude API</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations</span>
+    <h1>The parameters that matter</h1>
+    <p class="lede">The request has a handful of knobs. You'll set two on <em>every</em> call, three sometimes,
+      and the rest rarely. This page is the field guide: <b>what each knob does, when to turn it, and the sane
+      default.</b> Build a request by toggling parameters and watch the effect.</p>
+    <div class="tagrow">
+      <span class="tag key">model</span><span class="tag key">max_tokens</span>
+      <span class="tag key">system</span><span class="tag">temperature</span>
+      <span class="tag">stop_sequences</span><span class="tag">top_p / top_k</span><span class="tag">stream</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Think of ordering a pizza. You <b>always</b> pick a size (that's <code>model</code>) and how many slices max
+    (<code>max_tokens</code>). Sometimes you add special instructions ("no onions" = <code>system</code>) or say
+    how adventurous the chef can be (<code>temperature</code>). And you can say "stop adding toppings once you
+    reach pepperoni" (<code>stop_sequences</code>). Most knobs have a normal default — you only touch them when
+    you have a reason.
+  </div>
+
+  <h2>Build a request — flip knobs, read the effect</h2>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>model</label><select id="model">
+        <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+        <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
+        <option value="claude-opus-4-8">claude-opus-4-8</option></select></div>
+      <div class="ctrl"><label>max_tokens <span class="val"></span></label>
+        <input id="maxtok" type="range" min="50" max="4000" step="50" value="500"></div>
+      <div class="ctrl"><label>temperature <span class="val"></span></label>
+        <input id="temp" type="range" min="0" max="1" step="0.1" value="1"></div>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="usesys" checked> system prompt</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="usestop"> stop_sequences</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="stream"> stream</label>
+    </div>
+    <pre id="req"></pre>
+    <p id="effect" class="note"></p>
+  </div>
+
+  <h2>The field guide</h2>
+  <table>
+    <tr><th>Parameter</th><th>Required?</th><th>What it does</th><th>When to change it</th></tr>
+    <tr><td><code>model</code></td><td><b>yes</b></td><td>Which Claude answers (Haiku/Sonnet/Opus).</td><td>Every call. Route to the cheapest model that clears the bar → <a href="model-selection.html">model selection</a>.</td></tr>
+    <tr><td><code>max_tokens</code></td><td><b>yes</b></td><td>Hard cap on the <em>reply</em> length (in tokens). Reserves output room in the window.</td><td>Every call. Big enough for a full answer; too small → <code>stop_reason:"max_tokens"</code> (cut off).</td></tr>
+    <tr><td><code>messages</code></td><td><b>yes</b></td><td>The conversation, alternating user/assistant.</td><td>Every call — it <em>is</em> the conversation.</td></tr>
+    <tr><td><code>system</code></td><td>no</td><td>Standing instructions / role, separate from the chat.</td><td>Almost always — set the role and rules here → <a href="../4-prompting/prompt-anatomy.html">prompt anatomy</a>.</td></tr>
+    <tr><td><code>temperature</code></td><td>no (def ~1.0)</td><td>Randomness. <b>0</b> = focused/repeatable; higher = more varied/creative.</td><td>Set <b>0</b> for extraction, classification, code. Raise for brainstorming/creative writing.</td></tr>
+    <tr><td><code>stop_sequences</code></td><td>no</td><td>Strings that make Claude stop the moment it produces one.</td><td>When you need output to end at a marker (e.g. stop at <code>"\n\n"</code> or <code>"END"</code>).</td></tr>
+    <tr><td><code>stream</code></td><td>no (def false)</td><td>Send the reply token-by-token as it's generated.</td><td>For chat UIs (show text as it types). Off for batch/backend jobs.</td></tr>
+    <tr><td><code>tools</code></td><td>no</td><td>Tool definitions that enable <code>tool_use</code>.</td><td>When the model needs to take actions → Domain 2.</td></tr>
+    <tr><td><code>top_p</code> / <code>top_k</code></td><td>no</td><td>Alternative sampling controls (nucleus / top-k).</td><td><b>Rarely.</b> Prefer <code>temperature</code>; don't tune both at once.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam &amp; practice traps:</b> <code>max_tokens</code> limits the <em>reply</em>, not
+  the input — and if a reply looks truncated, check <code>stop_reason == "max_tokens"</code> and raise it. For
+  anything you want <b>consistent</b> (extraction, classification, evals), set <code>temperature=0</code> —
+  leaving it high is why "the same prompt gives different answers." Don't twiddle <code>top_p</code> and
+  <code>temperature</code> together. And <code>system</code> is its own parameter, not a message.</div>
+
+  <div class="note green"><b>Takeaways:</b> set <b>model + max_tokens + messages</b> on every call, and
+  <b>system</b> almost always. Reach for <b>temperature=0</b> when you need repeatable output, raise it for
+  creativity. Use <b>stop_sequences</b> to end at a marker and <b>stream</b> for typing UIs. Leave
+  <b>top_p/top_k</b> alone unless you have a specific reason. Everything else (tools, thinking) turns on features
+  covered in their own explainers.</div>
+
+  <p class="small muted">Try these knobs for real in the <a href="../../viewer.html?doc=practice/foundations-api.md">runnable Python
+  exercises</a> (Exercise 3 is a temperature experiment). Next: <a href="reading-the-docs.html">how to read the
+  API docs →</a></p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Prev: <a href="messages-api.html">← Messages API</a> · Next: <a href="reading-the-docs.html">reading the docs →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$, slider = Ill.slider;
+  slider($('#maxtok'), v=>v+' tok', render);
+  slider($('#temp'), v=>v.toFixed(1), render);
+  ['model','usesys','usestop','stream'].forEach(id=>$('#'+id).addEventListener('change',render));
+  function render(){
+    const model=$('#model').value, maxtok=+$('#maxtok').value, temp=+$('#temp').value,
+          usesys=$('#usesys').checked, usestop=$('#usestop').checked, stream=$('#stream').checked;
+    let lines = [];
+    lines.push(`    model="${model}",`);
+    lines.push(`    max_tokens=${maxtok},`);
+    lines.push(`    temperature=${temp.toFixed(1)},`);
+    if(usesys) lines.push(`    system="You are a precise assistant.",`);
+    if(usestop) lines.push(`    stop_sequences=["\\n\\nEND"],`);
+    lines.push(`    messages=[{"role":"user","content":"Extract the total from this invoice..."}],`);
+    const call = stream ? 'client.messages.stream(' : 'client.messages.create(';
+    $('#req').textContent = `${call}\n${lines.join('\n')}\n)`;
+    const notes = [];
+    notes.push(temp===0
+      ? '✅ <b>temperature=0</b> → repeatable. Right for extraction/classification/evals — same input, same output.'
+      : (temp>=0.7 ? '⚠ <b>temperature='+temp.toFixed(1)+'</b> → varied output. Great for brainstorming, but the <em>same</em> prompt will give <em>different</em> answers. Wrong for extraction.'
+                   : '<b>temperature='+temp.toFixed(1)+'</b> → mildly varied. Fine for general chat.'));
+    notes.push(maxtok<200
+      ? '⚠ <b>max_tokens='+maxtok+'</b> is small — a long answer will be cut off (<code>stop_reason:"max_tokens"</code>). Fine for a one-word classification, risky for prose.'
+      : '<b>max_tokens='+maxtok+'</b> leaves room for a full reply.');
+    if(usestop) notes.push('<b>stop_sequences</b> → Claude halts the instant it emits "\\n\\nEND". Useful to stop at a structured marker.');
+    if(stream) notes.push('<b>stream=True</b> → tokens arrive as they\'re generated (loop over events). Use for chat UIs, not batch jobs.');
+    const warn = notes.some(n=>n.includes('⚠'));
+    $('#effect').className = 'note ' + (warn?'':'green');
+    $('#effect').innerHTML = notes.map(n=>'• '+n).join('<br>');
+  }
+  render();
+})();
+</script>
+</body>
+</html>

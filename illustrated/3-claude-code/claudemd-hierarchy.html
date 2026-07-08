@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The CLAUDE.md hierarchy — where memory lives</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 3 · Claude Code Configuration (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 3 · Claude Code Configuration</span>
+    <h1>The CLAUDE.md hierarchy</h1>
+    <p class="lede"><code>CLAUDE.md</code> is the file Claude Code reads as standing instructions — the project's
+      "house rules." But there isn't one file; there's a <b>hierarchy</b>: user-level, project-level, and
+      directory-level, each layered on top of the last. Knowing <em>which file wins where</em> is the single most
+      configuration-heavy thing the exam tests.</p>
+    <div class="tagrow">
+      <span class="tag key">user / project / directory</span><span class="tag key">layering</span>
+      <span class="tag">~/.claude/CLAUDE.md</span><span class="tag">imports</span>
+      <span class="tag">specificity</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Think of rules at school. There are <b>rules for the whole school</b> (no running), <b>rules for your
+    classroom</b> (raise your hand), and <b>rules for the art corner</b> (wear an apron). The art-corner rules are
+    most specific, so they win <em>there</em> — but the school rules still apply everywhere else. CLAUDE.md works
+    the same way: the file closest to the work you're doing has the loudest voice.
+  </div>
+
+  <h2>Click a folder — see which rules apply</h2>
+  <p>Claude Code reads from broad to specific and stacks them. A more specific file doesn't erase the broader
+  ones — it <b>adds to and overrides</b> them for its scope. Click around the tree to see the effective rule set
+  for a file in that location:</p>
+
+  <div class="panel">
+    <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:18px;align-items:start;">
+      <div id="tree" style="font-family:var(--mono);font-size:13px;line-height:1.9;"></div>
+      <div>
+        <div class="small muted" style="margin-bottom:6px;">Effective instructions for the selected file:</div>
+        <div id="stack"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>The three (plus one) levels</h2>
+  <table>
+    <tr><th>Level</th><th>Location</th><th>Scope</th></tr>
+    <tr><td><b>User</b></td><td><code>~/.claude/CLAUDE.md</code></td><td>Every project on your machine — your personal defaults.</td></tr>
+    <tr><td><b>Project</b></td><td><code>&lt;repo&gt;/CLAUDE.md</code> (committed)</td><td>The whole repo — shared team conventions.</td></tr>
+    <tr><td><b>Directory</b></td><td><code>&lt;repo&gt;/sub/CLAUDE.md</code></td><td>Just that subtree — e.g. backend-only rules.</td></tr>
+    <tr><td><b>Local / personal</b></td><td><code>CLAUDE.local.md</code> (git-ignored)</td><td>Your private overrides for a repo, not shared.</td></tr>
+  </table>
+  <p>Files can also pull in others with <code>@path/to/file</code> <b>imports</b>, so you keep one source of truth
+  and reference it instead of copy-pasting. The closer a file is to the code being edited, the higher its
+  precedence.</p>
+
+  <div class="note clay"><b>Exam trap:</b> directory-level files <em>add to</em> the broader ones — they don't
+  replace the whole stack. And put <b>shared</b> conventions in the committed project <code>CLAUDE.md</code>;
+  put <b>personal</b> tweaks in <code>~/.claude/CLAUDE.md</code> or <code>CLAUDE.local.md</code>. Mixing these up
+  (committing personal prefs, or putting team rules only in your user file) is a classic wrong answer.</div>
+
+  <div class="note green"><b>Takeaways:</b> CLAUDE.md is a <b>layered hierarchy</b> — <b>user</b>
+  (<code>~/.claude</code>) → <b>project</b> (committed) → <b>directory</b> (subtree) → <b>local</b> (git-ignored
+  personal). More-specific files <b>add to and override</b> broader ones for their scope; they don't wipe the
+  stack. Use <code>@imports</code> for one source of truth. Shared rules → committed project file; personal rules
+  → user/local file.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/claude-code/memory" target="_blank" rel="noopener">Claude Code — Memory & CLAUDE.md</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 3.
+    Next: <a href="grep-vs-glob.html">Grep vs Glob & built-in tools →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  const NODES = {
+    user:  { label:'~/.claude/CLAUDE.md', rule:'Personal: "always run tests before saying done; prefer concise diffs."', color:'var(--violet)' },
+    proj:  { label:'myrepo/CLAUDE.md', rule:'Project: "this is a TypeScript monorepo; use pnpm; never edit generated/."', color:'var(--clay-deep)' },
+    be:    { label:'myrepo/backend/CLAUDE.md', rule:'Backend: "Python + FastAPI; run ruff + pytest; DB migrations via alembic."', color:'var(--green)' },
+    fe:    { label:'myrepo/web/CLAUDE.md', rule:'Web: "React + Tailwind; components in PascalCase; no inline styles."', color:'var(--blue)' },
+  };
+  const FILES = [
+    { id:'beFile', path:'backend/api/orders.py', stack:['user','proj','be'], indent:2 },
+    { id:'feFile', path:'web/components/Cart.tsx', stack:['user','proj','fe'], indent:2 },
+    { id:'rootFile', path:'README.md (repo root)', stack:['user','proj'], indent:1 },
+  ];
+  // build tree
+  const tree = $('#tree');
+  const lines = [
+    {t:'📁 myrepo/', i:0},
+    {t:'📄 CLAUDE.md  «project»', i:1, n:'proj'},
+    {t:'📄 README.md', i:1, f:'rootFile'},
+    {t:'📁 backend/', i:1},
+    {t:'📄 CLAUDE.md  «directory»', i:2, n:'be'},
+    {t:'📄 api/orders.py', i:2, f:'beFile'},
+    {t:'📁 web/', i:1},
+    {t:'📄 CLAUDE.md  «directory»', i:2, n:'fe'},
+    {t:'📄 components/Cart.tsx', i:2, f:'feFile'},
+  ];
+  lines.forEach(l => {
+    const d = el('div', { html:'&nbsp;'.repeat(l.i*3) + l.t,
+      style:{ cursor: l.f ? 'pointer' : 'default', color: l.f ? 'var(--clay-deep)' : (l.n?'var(--muted)':'inherit'),
+              fontWeight: l.f ? '700':'400' } });
+    if (l.f) d.addEventListener('click', () => select(l.f));
+    tree.appendChild(d);
+  });
+  function select(fid){
+    const f = FILES.find(x=>x.id===fid);
+    const stack = $('#stack'); stack.innerHTML = '';
+    stack.appendChild(el('div',{class:'chip sel',style:{marginBottom:'10px',display:'inline-block'},text:'editing: '+f.path}));
+    f.stack.forEach((k,idx) => {
+      const n = NODES[k];
+      stack.appendChild(el('div', { style:{ borderLeft:'4px solid '+n.color, background:'var(--light)',
+        padding:'8px 12px', borderRadius:'0 8px 8px 0', margin:'8px 0' },
+        html:'<b style="color:'+n.color+'">'+ (idx===f.stack.length-1?'▼ most specific — ':'') + n.label+'</b><br><span class="small">'+n.rule+'</span>' }));
+    });
+    stack.appendChild(el('div',{class:'note green small',html:'Claude obeys <b>all of the above</b>, with the lowest (most specific) winning any conflict.'}));
+  }
+  select('beFile');
+})();
+</script>
+</body>
+</html>

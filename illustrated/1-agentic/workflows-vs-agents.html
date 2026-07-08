@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflows vs agents — pick the simplest thing that works</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 1 · Agentic Architecture (27%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 1 · Agentic Architecture</span>
+    <h1>Workflows vs agents</h1>
+    <p class="lede">"Build an agent" is rarely the right first move. Most reliable LLM systems are
+      <b>workflows</b> — fixed, predictable arrangements of model calls you wire up in code. Only some tasks
+      need a true <b>agent</b> that decides its own steps. Flip through the five building blocks (from
+      Anthropic's <em>Building Effective Agents</em>) and learn the one question that decides which to use.</p>
+    <div class="tagrow">
+      <span class="tag key">chaining</span><span class="tag key">routing</span>
+      <span class="tag key">parallelization</span><span class="tag key">orchestrator–workers</span>
+      <span class="tag key">evaluator–optimizer</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    A <b>workflow</b> is like a recipe card: do step 1, then 2, then 3 — always the same order, so it never
+    surprises you. An <b>agent</b> is like sending a friend to the shop with "get stuff for dinner" — they
+    decide what to buy. The friend is more flexible, but they might come back with anchovy ice cream. So you
+    only send a free-roaming friend when a fixed recipe truly can't do the job.
+  </div>
+
+  <h2>The deciding question</h2>
+  <p>In a <b>workflow</b>, <em>you</em> wire the control flow in code — the path is fixed and predictable. In
+  an <b>agent</b>, the <em>model</em> directs its own process, choosing tools and steps in a loop until it
+  decides it's done. Agents are more flexible but less predictable and more expensive. So the rule is:
+  <b>use the simplest thing that works</b> — one prompt first, then a fixed workflow, and only an autonomous
+  agent when the task genuinely needs open-ended decisions you can't script. Step through the spectrum:</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>pattern</label><select id="pat"></select></div>
+    <svg id="diagram" viewBox="0 0 560 220" role="img" aria-label="pattern diagram"></svg>
+    <p style="margin:8px 0 4px;"><b id="ptitle"></b> <span class="pill" id="ptype" style="background:var(--light);color:var(--muted);"></span></p>
+    <p id="pdesc" style="margin:4px 0;"></p>
+    <p class="note" id="pwhen" style="margin-top:10px;"></p>
+  </div>
+
+  <h2>Real systems nest them</h2>
+  <p>These aren't mutually exclusive. A router can dispatch to a chain; an orchestrator's workers can each run
+  an evaluator–optimizer loop; an autonomous agent can call a whole workflow as one of its tools. The
+  discipline is to <b>add autonomy only where it earns its keep</b>, keep a human in the loop for consequential
+  actions, and always cap the loop so an agent can't run away. The fully autonomous end of this spectrum is the
+  <a href="agent-loop.html">agent loop</a> you can drive in its own explainer.</p>
+
+  <div class="note clay"><b>Exam trap:</b> wrong answers in Domain 1 often <em>sound</em> sophisticated —
+  "spin up a multi-agent swarm" for a task that's really just classify-then-answer. The certified-architect
+  instinct is to <b>down-scope</b>: routing or a chain beats an agent whenever the steps are predictable. More
+  autonomy = more cost, more latency, more failure surface.</div>
+
+  <div class="note green"><b>Takeaways:</b> prefer <b>workflows</b> (predictable, coded control flow) over
+  <b>agents</b> (model-directed, flexible but costly) until the task needs open-ended decisions.
+  <b>Chaining</b> = sequential steps; <b>routing</b> = classify then dispatch; <b>parallelization</b> = fan-out
+  + aggregate; <b>orchestrator–workers</b> = dynamic subtasks; <b>evaluator–optimizer</b> = generate-and-critique
+  loop. Compose them, keep humans on consequential steps, and bound every loop.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building Effective Agents</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 1.
+    Next: <a href="orchestrator-workers.html">multi-agent orchestration →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  const C = { in:['#f2efe9','#6b6357'], llm:['#fbeee8','#b35a3f'], ctrl:['#fdf4e7','#c08a2e'], eval:['#e7f3ec','#3d8a5f'] };
+  const PATTERNS = [
+    { label:'1 · Prompt chaining', type:'workflow',
+      nodes:[['in',40,100,'input','in'],['a',160,100,'LLM step 1','llm'],['b',290,100,'LLM step 2','llm'],['c',420,100,'LLM step 3','llm'],['out',530,100,'output','in']],
+      edges:[['in','a'],['a','b'],['b','c'],['c','out']],
+      desc:'A fixed sequence: each call works on the previous one\'s output, optionally with a programmatic "gate" check between steps.',
+      when:'Use when a task splits cleanly into ordered subtasks — outline → draft → polish. Trades a little latency for much higher accuracy per step.' },
+    { label:'2 · Routing', type:'workflow',
+      nodes:[['in',40,100,'input','in'],['r',170,100,'router','ctrl'],['a',330,40,'handler A','llm'],['b',330,100,'handler B','llm'],['c',330,160,'handler C','llm'],['out',500,100,'output','in']],
+      edges:[['in','r'],['r','a'],['r','b'],['r','c'],['a','out'],['b','out'],['c','out']],
+      desc:'A classifier decides what kind of input this is, then dispatches it to a specialised prompt or model built for that category.',
+      when:'Use when inputs fall into distinct buckets (refund vs tech-support vs sales). Each handler stays simple, and easy queries can go to a cheaper model like Haiku.' },
+    { label:'3 · Parallelization', type:'workflow',
+      nodes:[['in',40,100,'input','in'],['a',230,40,'LLM','llm'],['b',230,100,'LLM','llm'],['c',230,160,'LLM','llm'],['agg',410,100,'aggregate','ctrl'],['out',530,100,'output','in']],
+      edges:[['in','a'],['in','b'],['in','c'],['a','agg'],['b','agg'],['c','agg'],['agg','out']],
+      desc:'Run several calls at once and combine them — split work into independent sections, or ask the same thing many times and vote.',
+      when:'Use for speed (independent subtasks in parallel) or reliability (majority vote / multiple checks). Great for running a guardrail alongside the main answer.' },
+    { label:'4 · Orchestrator–workers', type:'workflow',
+      nodes:[['in',40,100,'input','in'],['o',180,100,'orchestrator','ctrl'],['a',350,40,'worker','llm'],['b',350,100,'worker','llm'],['c',350,160,'worker','llm'],['s',490,100,'synthesize','ctrl']],
+      edges:[['in','o'],['o','a'],['o','b'],['o','c'],['a','s'],['b','s'],['c','s']],
+      desc:'Like parallelization, but the subtasks aren\'t fixed in advance — a central model decides how to break the problem up, delegates, then synthesises.',
+      when:'Use when you can\'t predict the subtasks up front — "change every file this feature touches." The orchestrator decides the breakdown at run time. (This is the multi-agent research pattern.)' },
+    { label:'5 · Evaluator–optimizer', type:'workflow',
+      nodes:[['in',40,100,'input','in'],['g',200,100,'generator','llm'],['e',380,100,'evaluator','eval'],['out',510,40,'output','in']],
+      edges:[['in','g'],['g','e'],['e','out','pass'],['e','g','revise ↩']],
+      desc:'One call produces a candidate; a second critiques it against criteria. If it falls short, the feedback loops back and the generator tries again.',
+      when:'Use when you have clear evaluation criteria and iteration helps — translation, code that must pass tests, search-and-refine.' },
+    { label:'6 · Autonomous agent', type:'agent',
+      nodes:[['in',40,100,'task','in'],['m',230,100,'LLM','llm'],['t',410,100,'tools / env','ctrl'],['out',520,40,'done','in']],
+      edges:[['in','m'],['m','t','act'],['t','m','observe ↩'],['m','out','stop']],
+      desc:'The model runs its own loop — plan, call a tool, read the result, decide the next move — until it judges the task complete (or hits a limit).',
+      when:'Use only when the path can\'t be scripted and the task is open-ended. Most flexible, least predictable, most expensive — bound the steps and keep a human on risky actions.' },
+  ];
+
+  const sel = $('#pat');
+  PATTERNS.forEach((p,i) => sel.appendChild(el('option',{value:String(i),text:p.label})));
+  function node(svg,x,y,label,kind){ const [bg,fg]=C[kind]; const w=Math.max(58,label.length*7+16);
+    svg.appendChild(el('rect',{x:x-w/2,y:y-15,width:w,height:30,rx:7,fill:bg,stroke:fg}));
+    svg.appendChild(el('text',{x,y:y+4,'text-anchor':'middle','font-size':11,fill:fg,'font-weight':'600',text:label}));
+    return {x,y,w}; }
+  function arrow(svg,a,b,label){ let x1=a.x+a.w/2,y1=a.y,x2=b.x-b.w/2,y2=b.y;
+    if(b.x<a.x){x1=a.x;y1=a.y+16;x2=b.x;y2=b.y+16;} const back=b.x<a.x;
+    if(back){ const my=Math.max(y1,y2)+34;
+      svg.appendChild(el('path',{d:'M'+x1+' '+y1+' C '+x1+' '+my+', '+x2+' '+my+', '+x2+' '+y2,fill:'none',stroke:'#bf4d3a','stroke-width':1.5,'stroke-dasharray':'5 3'}));
+      if(label) svg.appendChild(el('text',{x:(x1+x2)/2,y:my+12,'text-anchor':'middle','font-size':10,fill:'#bf4d3a',text:label}));
+    } else { svg.appendChild(el('line',{x1,y1,x2:x2-6,y2,stroke:'var(--muted)','stroke-width':1.5}));
+      const ang=Math.atan2(y2-y1,x2-x1);
+      [-0.5,0.5].forEach(d=>svg.appendChild(el('line',{x1:x2-6,y1:y2,x2:x2-6-7*Math.cos(ang-d),y2:y2-7*Math.sin(ang-d),stroke:'var(--muted)','stroke-width':1.5})));
+      if(label) svg.appendChild(el('text',{x:(x1+x2)/2,y:y1-6,'text-anchor':'middle','font-size':10,fill:'var(--muted)',text:label})); } }
+  function render(){ const p=PATTERNS[+sel.value]; const svg=$('#diagram'); svg.innerHTML=''; const map={};
+    p.nodes.forEach(nd=>{map[nd[0]]=node(svg,nd[1],nd[2],nd[3],nd[4]);});
+    p.edges.forEach(e=>arrow(svg,map[e[0]],map[e[1]],e[2]));
+    $('#ptitle').textContent=p.label;
+    $('#ptype').textContent=p.type==='agent'?'autonomous agent':'workflow (you control the flow)';
+    $('#ptype').style.color=p.type==='agent'?'var(--red)':'var(--green)';
+    $('#pdesc').innerHTML=p.desc; $('#pwhen').innerHTML='<b>When:</b> '+p.when; }
+  sel.addEventListener('change',render); render();
+})();
+</script>
+</body>
+</html>

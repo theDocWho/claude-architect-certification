@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structured errors & retry loops — let the agent recover</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 2 · Tool Design & MCP (18%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 2 · Tool Design & MCP</span>
+    <h1>Structured errors &amp; retry loops</h1>
+    <p class="lede">Tools fail — networks blip, inputs are wrong, records don't exist. What separates a brittle
+      agent from a self-healing one is <b>how the failure is reported back</b>. A structured error tells the
+      model exactly what happened and whether trying again could help. Watch an agent recover — or give up — based
+      on the error you hand it.</p>
+    <div class="tagrow">
+      <span class="tag key">errorCategory</span><span class="tag key">isRetryable</span>
+      <span class="tag key">human-readable message</span><span class="tag">validation-retry loop</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    When something goes wrong, "Error 0x5F" is like a grown-up just saying "nope" and walking away — you have no
+    idea what to do. A <b>structured error</b> is like "I couldn't find that order — double-check the number and
+    try again." Now you know <em>what</em> broke and <em>whether</em> trying again will help. Good error messages
+    let Claude fix its own mistakes instead of getting stuck.
+  </div>
+
+  <h2>Three fields turn a dead-end into a recovery</h2>
+  <p>A good tool error is itself a little tool-result the model can reason over. The pattern the exam expects has
+  three parts:</p>
+  <table>
+    <tr><th>Field</th><th>Purpose</th><th>Example</th></tr>
+    <tr><td><code>errorCategory</code></td><td>A machine-readable bucket so the model (and your code) can branch.</td><td><code>"NOT_FOUND"</code>, <code>"VALIDATION"</code>, <code>"RATE_LIMIT"</code>, <code>"AUTH"</code></td></tr>
+    <tr><td><code>isRetryable</code></td><td>Should the agent try again, or is retrying pointless?</td><td><code>true</code> for a timeout; <code>false</code> for "order doesn't exist"</td></tr>
+    <tr><td><code>message</code></td><td>Human-readable guidance the model uses to decide its next move.</td><td>"No order 99999. Confirm the ID with the customer."</td></tr>
+  </table>
+
+  <h2>Hand the agent an error — see what it does</h2>
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>tool failure</label>
+      <select id="err">
+        <option value="raw">❌ raw error: "Error: 500"</option>
+        <option value="timeout">⏳ structured: RATE_LIMIT, retryable</option>
+        <option value="notfound">🔍 structured: NOT_FOUND, not retryable</option>
+        <option value="validation">📐 structured: VALIDATION, retryable</option>
+      </select></div>
+    <pre id="payload"></pre>
+    <p id="behavior" class="note"></p>
+  </div>
+
+  <h2>The validation–retry loop</h2>
+  <p>For structured output and tool args, the strongest pattern is a bounded loop: the model produces a call →
+  your code <b>validates</b> it against the schema → on failure you return a <code>VALIDATION</code> error
+  naming the exact problem → the model corrects and resubmits. This recovers from malformed JSON and missing
+  fields automatically. The guardrail (Domain 1) still applies: <b>cap the retries</b> (e.g. 3) so a persistently
+  confused model doesn't loop forever.</p>
+
+  <div class="note clay"><b>Exam trap:</b> returning a raw stack trace or a bare <code>"failed"</code> is the
+  wrong answer — the model can't tell <em>retry</em> from <em>give up</em>, so it either spins pointlessly or
+  abandons a recoverable task. The right answer always pairs a <b>category</b> + <b>isRetryable</b> + a
+  <b>human-readable next step</b>, inside a <b>bounded</b> retry loop.</div>
+
+  <div class="note green"><b>Takeaways:</b> design tool errors as structured payloads with
+  <b>errorCategory</b>, <b>isRetryable</b>, and a <b>human-readable message</b>. Retryable failures (timeouts,
+  validation) let the agent self-correct; non-retryable ones (not-found, auth) tell it to stop and ask. Wrap it
+  in a <b>bounded validation–retry loop</b>. Raw stack traces are a dead end — never hand them to the model.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing tools for agents</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 2.
+    Next: <a href="mcp-architecture.html">how MCP wires tools to Claude →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const DATA = {
+    raw: { p:`{ "error": "Error: 500 Internal Server Error\\n  at db.query (orders.js:88)" }`,
+      n:false, t:'<b>Agent is stuck.</b> No category, no retry signal, no guidance. The model either retries blindly (maybe forever) or surrenders on a task it could have completed. This is the failure the exam wants you to avoid.' },
+    timeout: { p:`{
+  "errorCategory": "RATE_LIMIT",
+  "isRetryable": true,
+  "message": "Upstream busy. Back off and retry in a moment.",
+  "retryAfterMs": 1500
+}`, n:true, t:'<b>Agent backs off and retries</b> (within its retry cap). <code>isRetryable:true</code> + a hint means it waits and tries again — and usually succeeds on attempt 2. Self-healing.' },
+    notfound: { p:`{
+  "errorCategory": "NOT_FOUND",
+  "isRetryable": false,
+  "message": "No order with ID 99999. Ask the customer to confirm the number."
+}`, n:true, t:'<b>Agent stops retrying and asks the user.</b> <code>isRetryable:false</code> tells it that hammering the tool is pointless — the right move is to surface the message and request the correct ID. No wasted turns.' },
+    validation: { p:`{
+  "errorCategory": "VALIDATION",
+  "isRetryable": true,
+  "message": "order_id must be an integer; received \\"#4471\\". Strip the '#'.",
+  "field": "order_id"
+}`, n:true, t:'<b>Agent self-corrects.</b> The error names the exact field and fix, so the model resubmits <code>order_id: 4471</code> and proceeds. This is the validation–retry loop in action.' },
+  };
+  const sel = $('#err');
+  function show(){ const d = DATA[sel.value]; $('#payload').textContent = d.p;
+    $('#behavior').className = 'note ' + (d.n ? 'green' : ''); $('#behavior').innerHTML = d.t; }
+  sel.addEventListener('change', show); show();
+})();
+</script>
+</body>
+</html>

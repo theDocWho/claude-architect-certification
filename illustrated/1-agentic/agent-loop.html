@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The agent loop — how an agent actually thinks</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 1 · Agentic Architecture (27%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 1 · Agentic Architecture</span>
+    <h1>The agent loop</h1>
+    <p class="lede">An "agent" sounds magical, but underneath it is one small loop running over and over:
+      <b>think → act → look → repeat</b>. Press play and watch a real agent solve a task one turn at a
+      time. Once you can see the loop, every agent bug ("it never stops", "it forgot the goal", "it called
+      the wrong tool") has an obvious home.</p>
+    <div class="tagrow">
+      <span class="tag key">agentic loop</span><span class="tag">tool use</span>
+      <span class="tag">stop conditions</span><span class="tag">context accumulation</span>
+      <span class="tag">max turns</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine you send a clever robot to bake a cake but it can't see the kitchen. So it works like this: it
+    <b>says out loud</b> what it wants ("I need flour"), you go <b>fetch</b> the flour and tell it what you
+    found ("here's 2 cups"), and then it <b>thinks again</b> about the next step. Talk, fetch, think — over and
+    over — until the cake is done. The robot is <b>Claude</b>. The "fetching" is a <b>tool</b>. That talk-fetch-think
+    circle is the <b>agent loop</b>.
+  </div>
+
+  <h2>Watch the loop run</h2>
+  <p>The model never touches the outside world directly. Each turn it either <b>asks for a tool</b> (an action
+  it wants taken) or <b>gives a final answer</b>. Your code runs the tool, appends the result to the
+  conversation, and calls the model again — that "call again with the result attached" is the entire trick.
+  Step through a customer-support agent answering <em>"Where is order #4471 and can I still cancel it?"</em></p>
+
+  <div class="panel">
+    <svg id="diagram" viewBox="0 0 620 250" role="img" aria-label="agent loop diagram"></svg>
+    <div class="btnrow">
+      <button id="step">Step ▶</button>
+      <button id="auto" class="ghost">Auto-play</button>
+      <button id="reset" class="ghost">Reset</button>
+      <span class="muted small" id="turncount" style="margin-left:auto;"></span>
+    </div>
+    <div id="log" style="font-family:var(--mono);font-size:13px;background:var(--light);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-height:120px;"></div>
+  </div>
+
+  <h2>The four parts every loop has</h2>
+  <table>
+    <tr><th>Part</th><th>What it is</th><th>Where it breaks in production</th></tr>
+    <tr><td><b>Model turn</b></td><td>Claude reads the whole conversation and decides: call a tool, or answer.</td><td>Vague task → it guesses; too many tools → it picks the wrong one.</td></tr>
+    <tr><td><b>Tool execution</b></td><td><em>Your code</em> runs the requested action and captures the result.</td><td>Tool throws, times out, or returns a wall of unstructured text.</td></tr>
+    <tr><td><b>Result append</b></td><td>The result is added to the message history as a <code>tool_result</code>.</td><td>Result too big → blows the context window (Domain 5).</td></tr>
+    <tr><td><b>Stop check</b></td><td>Loop until the model answers <em>or</em> a limit (max turns / budget) is hit.</td><td>No cap → runaway loop, burning tokens forever.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> the model does <b>not</b> run tools. It only emits a <code>tool_use</code>
+  request; <em>your harness</em> executes it and feeds back a <code>tool_result</code>. Every "the agent did X"
+  is really "the model asked, the harness did X." Knowing exactly where the boundary sits is half of Domain 1.</div>
+
+  <h2>Why context grows every turn</h2>
+  <p>Notice the conversation only ever gets <em>longer</em>: each turn appends the model's request and the
+  tool's result. That accumulating transcript is the agent's <b>only</b> memory — there is no hidden state.
+  This is why long agent runs eventually hit the context window and need <b>compaction</b> (Domain 5), and why
+  a clear running goal matters: on turn 12 the model re-reads everything from turn 1 to decide turn 13.</p>
+
+  <div class="note green"><b>Takeaways:</b> an agent = a <b>loop</b> of <i>model turn → tool execution → append
+  result → stop check</i>. The model only <b>requests</b> actions; your harness performs them. The transcript is
+  the agent's entire memory, so it grows every turn. <b>Always</b> bound the loop (max turns + budget) and give a
+  crisp goal, or you get runaway loops and lost objectives — the two failures Domain 1 loves to test.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building Effective Agents</a> ·
+  <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview" target="_blank" rel="noopener">Tool use overview</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 1 · Agentic Architecture.
+    Next: <a href="workflows-vs-agents.html">when you should <em>not</em> build an agent →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, box = Ill.box, arrow = Ill.arrow;
+  const C = { model:['#fbeee8','#b35a3f'], tool:['#e7f3ec','#3d8a5f'], stop:['#fdf4e7','#c08a2e'] };
+
+  // scripted run of the support agent
+  const STEPS = [
+    { node:'model', t:'<b>Model turn:</b> "I need the order status first." → requests tool <code>get_order(4471)</code>', active:'model' },
+    { node:'tool',  t:'<b>Tool execution:</b> harness runs <code>get_order(4471)</code> → <code>{status:"shipped", cancellable:false, eta:"Tue"}</code>', active:'tool' },
+    { node:'append',t:'<b>Append:</b> tool_result added to the transcript. Stop check → model has not answered → loop.', active:'stop' },
+    { node:'model', t:'<b>Model turn:</b> order is shipped, so it cannot be cancelled. It has what it needs → no tool, drafts the answer.', active:'model' },
+    { node:'stop',  t:'<b>Stop:</b> model returned a final message (no tool_use). Loop ends. ✅', active:'stop' },
+    { node:'final', t:'<b>Final answer →</b> "Order #4471 shipped and is due Tuesday. It\'s already on its way, so it can no longer be cancelled — but you can refuse delivery or start a return once it arrives."', active:null },
+  ];
+  let i = 0, timer = null;
+
+  function draw(active) {
+    const svg = $('#diagram'); svg.innerHTML = '';
+    // ring of three nodes + final
+    const m = box(svg, 150, 80, 150, 46, ['① Model turn','(think / decide)'], ...C.model);
+    const t = box(svg, 460, 80, 150, 46, ['② Tool execution','(your harness)'], ...C.tool);
+    const s = box(svg, 305, 195, 170, 46, ['③ Append + ④ stop check'], ...C.stop);
+    arrow(svg, m.x+m.w/2, m.y, t.x-t.w/2, t.y, 'var(--clay-deep)', 'tool_use →');
+    arrow(svg, t.x, t.y+t.h/2, s.x+s.w/2-20, s.y-s.h/2, 'var(--green)', 'result');
+    arrow(svg, s.x-s.w/2+20, s.y-s.h/2, m.x, m.y+m.h/2, 'var(--amber)', 'loop ↩');
+    // halo on the active node
+    const pos = { model:[150,80,150], tool:[460,80,150], stop:[305,195,170] }[active];
+    if (pos) svg.appendChild(el('rect', { x:pos[0]-pos[2]/2-5, y:pos[1]-28, width:pos[2]+10, height:56, rx:11,
+      fill:'none', stroke:'var(--clay)', 'stroke-width':3, 'stroke-dasharray':'4 3' }));
+  }
+
+  function render() {
+    const log = $('#log'); log.innerHTML = '';
+    STEPS.slice(0, i).forEach((s, k) => log.appendChild(el('div', {
+      style:{ padding:'5px 0', borderBottom: k < i-1 ? '1px solid var(--border)' : 'none',
+              opacity: k === i-1 ? '1' : '.62' }, html: (k+1) + '. ' + s.t })));
+    draw(i > 0 && i <= STEPS.length ? STEPS[i-1].active : null);
+    $('#turncount').textContent = 'step ' + i + ' / ' + STEPS.length;
+    $('#step').disabled = i >= STEPS.length;
+    log.scrollTop = log.scrollHeight;
+  }
+  function step() { if (i < STEPS.length) { i++; render(); } if (i >= STEPS.length && timer) { clearInterval(timer); timer=null; $('#auto').textContent='Auto-play'; } }
+  $('#step').addEventListener('click', step);
+  $('#reset').addEventListener('click', () => { i = 0; if (timer){clearInterval(timer);timer=null;$('#auto').textContent='Auto-play';} render(); });
+  $('#auto').addEventListener('click', () => {
+    if (timer) { clearInterval(timer); timer=null; $('#auto').textContent='Auto-play'; return; }
+    if (i >= STEPS.length) i = 0;
+    $('#auto').textContent='Pause'; timer = setInterval(step, 1400);
+  });
+  render();
+})();
+</script>
+</body>
+</html>

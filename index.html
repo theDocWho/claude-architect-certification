@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Certified Architect — visual, hands-on prep</title>
+<meta name="description" content="A free, visual, project-first learning site for the Claude Certified Architect (CCA-F) exam: 26 interactive explainers, runnable exercises, 6 portfolio projects.">
+<link rel="stylesheet" href="illustrated/assets/style.css">
+<style>
+  .bighero { padding: 48px 0 26px; border-bottom: none; display: grid; grid-template-columns: 1.15fr .85fr;
+    gap: 26px; align-items: center; text-align: left; }
+  .bighero h1 { font-size: 2.55rem; margin: 0 0 12px; }
+  .bighero h1 { font-size: clamp(2.5rem, 6vw, 3.4rem); font-weight: 800; letter-spacing: -.02em; }
+  .bighero h1 .grad { background: linear-gradient(105deg, #ff8a5c 5%, #ffc24d 45%, #c0a2ff 95%);
+    background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: gradslide 6s ease-in-out infinite alternate; }
+  @keyframes gradslide { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+  .bighero .lede { max-width: 640px; margin: 0; }
+  .herodemo { position: relative; }
+  .herodemo::before { content: ""; position: absolute; inset: -8% -6%; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,138,92,.16), transparent); filter: blur(6px); }
+  .herodemo svg { position: relative; filter: drop-shadow(0 0 26px rgba(255,138,92,.22)); }
+  .herodemo .cap { text-align: center; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  @media (max-width: 760px) { .bighero { grid-template-columns: 1fr; text-align: center; }
+    .bighero .lede { margin: 0 auto; } .ctas { justify-content: center; } }
+  .statrow { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 18px 0 4px; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 12px 22px; text-align: center; min-width: 118px; }
+  .stat:hover { border-color: rgba(255,138,92,.4); }
+  .stat .n { font-size: 1.7rem; font-weight: 800; color: var(--clay-deep); font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: .78rem; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
+  .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin: 26px 0 8px; }
+  .ctas a { text-decoration: none; }
+  .ctas .big { display: inline-block; background: linear-gradient(135deg, #ff8a5c, #f4603a); color: #fff;
+    font-weight: 700; padding: 12px 26px; border-radius: 12px; font-size: 1.05rem;
+    box-shadow: 0 6px 26px rgba(255,110,60,.45); transition: transform .12s, box-shadow .12s; }
+  .ctas .big:hover { transform: translateY(-2px); box-shadow: 0 10px 34px rgba(255,110,60,.6); }
+  .ctas .quiet { display: inline-block; background: rgba(255,255,255,.05); color: var(--ink); font-weight: 600;
+    padding: 12px 22px; border-radius: 12px; border: 1px solid var(--border); transition: border-color .12s; }
+  .ctas .quiet:hover { border-color: rgba(255,138,92,.5); }
+
+  /* path stepper */
+  .steps { counter-reset: step; margin: 10px 0 0; padding: 0; list-style: none; }
+  .steps li { position: relative; padding: 0 0 22px 54px; }
+  .steps li::before { counter-increment: step; content: counter(step);
+    position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--clay); color: #fff; font-weight: 800; display: flex; align-items: center;
+    justify-content: center; box-shadow: var(--shadow); }
+  .steps li::after { content: ""; position: absolute; left: 16px; top: 38px; bottom: 2px; width: 2px;
+    background: var(--border); }
+  .steps li:last-child::after { display: none; }
+  .steps .t { font-weight: 700; color: var(--navy); }
+  .steps .d { font-size: .92rem; color: var(--muted); margin-top: 2px; }
+
+  /* domain weight bars */
+  .wbar { display: grid; grid-template-columns: 250px 1fr 46px; gap: 10px; align-items: center; margin: 8px 0; }
+  .wbar a { font-size: .95rem; font-weight: 600; text-decoration: none; color: var(--navy); }
+  .wbar a:hover { color: var(--clay-deep); }
+  .wbar .track { background: var(--light); border-radius: 6px; overflow: hidden; height: 18px; }
+  .wbar .fill { height: 100%; background: var(--clay); border-radius: 6px; }
+  .wbar .pct { font-family: var(--mono); color: var(--clay-deep); font-weight: 700; font-size: .9rem; }
+
+  /* progress */
+  #progressPanel .track { background: var(--light); border-radius: 6px; height: 16px; overflow: hidden; }
+  #progressPanel .fill { height: 100%; background: var(--green); transition: width .4s ease; }
+
+  .threeway { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .threeway .card h4 { font-size: 1.05rem; }
+  .threeway ol { margin: 8px 0 0; padding-left: 18px; font-size: .9rem; color: var(--muted); }
+  .threeway ol li { margin: 4px 0; }
+  @media (max-width: 620px) { .bighero h1 { font-size: 2rem; } .wbar { grid-template-columns: 1fr; gap: 4px; } .wbar .pct { display:none; } }
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <span class="brand">🏛️ Claude Architect <span class="dot">·</span> CCA-F prep</span>
+  <span class="spacer"></span>
+  <a href="illustrated/index.html">Explainers</a>
+  <a href="viewer.html?doc=STUDY-PLAN.md">Study plan</a>
+  <a href="viewer.html?doc=BLUEPRINT.md">Blueprint</a>
+  <a href="viewer.html?doc=projects/README.md">Projects</a>
+  <a href="quiz.html">🎯 Quiz</a>
+</nav>
+
+<div class="wrap">
+  <div class="hero bighero">
+    <div>
+      <h1>Become a <span class="grad">Claude Certified Architect</span></h1>
+      <p class="lede">A free, visual, <b>build-it-to-learn-it</b> site for Anthropic's CCA-F exam.
+      Explainers you <b>drive</b>, quizzes that <b>talk back</b>, code you <b>run</b> (Colab or local),
+      and projects you can put on a résumé.</p>
+      <div class="ctas">
+        <a class="big" href="hangar.html">🚀 Play the Hangar</a>
+        <a class="quiet" href="illustrated/api-foundations/what-is-the-api.html">▶ Start the path</a>
+        <a class="quiet" href="quiz.html">🎯 Quiz mode</a>
+      </div>
+    </div>
+    <div class="herodemo">
+      <svg id="herosvg" viewBox="0 0 340 250" role="img" aria-label="live agent loop animation"></svg>
+      <div class="cap">← a real agent loop, running. You'll build one of these.</div>
+    </div>
+  </div>
+
+  <div class="statrow" id="stats">
+    <div class="stat"><div class="n" data-n="26">0</div><div class="l">interactive explainers</div></div>
+    <div class="stat"><div class="n" data-n="42">0</div><div class="l">quiz questions</div></div>
+    <div class="stat"><div class="n" data-n="10">0</div><div class="l">runnable exercises</div></div>
+    <div class="stat"><div class="n" data-n="7">0</div><div class="l">portfolio builds</div></div>
+    <div class="stat"><div class="n" data-n="14">0</div><div class="l">exam traps decoded</div></div>
+  </div>
+
+  <div class="panel" style="border-color:rgba(255,138,92,.4);">
+    <h4 style="font-size:1.15rem;">🚀 New here? Play before you read.</h4>
+    <p style="margin:6px 0 10px;">In <a href="hangar.html"><b>The Agent Hangar</b></a>, an AI agent is a
+    spaceship: master each <b>part</b> in a ~1-minute mini-game (the model = reasoning core, tools = the robotic
+    arm, context = cargo hold, budget = fuel, guardrails = shields), <b>assemble</b> the ship, then fly
+    <b>missions</b> where every decision point is a real exam judgment call — wrong picks cost hull and teach the
+    trap. Then the explainers, quizzes, and code make it stick.</p>
+    <a class="big" style="display:inline-block;background:linear-gradient(135deg,#ff8a5c,#f4603a);color:#fff;font-weight:700;padding:10px 22px;border-radius:12px;text-decoration:none;box-shadow:0 6px 26px rgba(255,110,60,.45);" href="hangar.html">Enter the hangar →</a>
+  </div>
+
+  <div class="panel" id="progressPanel" style="display:none;">
+    <h4>Your progress</h4>
+    <div class="track"><div class="fill" id="pfill" style="width:0%"></div></div>
+    <p class="small muted" style="margin:8px 0 0;"><span id="ptext"></span>
+      <a id="presume" href="#" style="margin-left:10px;font-weight:700;"></a></p>
+  </div>
+
+  <h2>The path — nine steps, in order</h2>
+  <p>Each step is <b>learn (drive the explainers) → build (run/ship something) → prove (drills)</b>. The
+  sequence is deliberate: you need prompts and tools before agents make sense. Full pacing in the
+  <a href="viewer.html?doc=STUDY-PLAN.md">6-week study plan</a>.</p>
+  <ol class="steps">
+    <li><span class="t"><a href="illustrated/api-foundations/what-is-the-api.html">Foundations — what even is the API?</a></span>
+      <div class="d">CLI vs API vs SDK untangled · how claude.ai &amp; VS Code map to it · get your key · first calls. Then <b>run the <a href="viewer.html?doc=practice/foundations-api.md">10 hands-on exercises</a></b> (Colab or local).</div></li>
+    <li><span class="t"><a href="illustrated/4-prompting/prompt-anatomy.html">Prompt engineering &amp; structured output</a> <span class="pill" style="background:var(--light);color:var(--clay-deep);">20%</span></span>
+      <div class="d">Prompt anatomy · few-shot · JSON schemas &amp; nullable fields · eval-driven changes. Build <a href="viewer.html?doc=projects/proj-05-structured-extraction/README.md">proj-05: extraction pipeline</a>.</div></li>
+    <li><span class="t"><a href="illustrated/2-tools-mcp/tool-anatomy.html">Tool design &amp; MCP</a> <span class="pill" style="background:var(--light);color:var(--clay-deep);">18%</span></span>
+      <div class="d">The description IS the API · structured errors · MCP host/client/server. Build <a href="viewer.html?doc=projects/proj-03-mcp-server/README.md">proj-03: your own MCP server</a>.</div></li>
+    <li><span class="t"><a href="illustrated/1-agentic/agent-loop.html">Agentic architecture</a> <span class="pill" style="background:var(--clay);color:#fff;">27% — the big one</span></span>
+      <div class="d">The loop · workflows vs agents · multi-agent orchestration · guardrails. Build <a href="viewer.html?doc=projects/proj-01-support-agent/README.md">proj-01: support agent</a> and <a href="viewer.html?doc=projects/proj-02-multi-agent-research/README.md">proj-02: research system</a>.</div></li>
+    <li><span class="t"><a href="illustrated/3-claude-code/claudemd-hierarchy.html">Claude Code configuration</a> <span class="pill" style="background:var(--light);color:var(--clay-deep);">20%</span></span>
+      <div class="d">CLAUDE.md hierarchy · Grep vs Glob · skills/rules/hooks · headless CI. Build <a href="viewer.html?doc=projects/proj-04-claude-code-cicd/README.md">proj-04: Claude Code in CI/CD</a>.</div></li>
+    <li><span class="t"><a href="illustrated/5-context/context-window.html">Context management &amp; reliability</a> <span class="pill" style="background:var(--light);color:var(--clay-deep);">15%</span></span>
+      <div class="d">Context window · prompt caching · compaction &amp; memory · escalation. Build <a href="viewer.html?doc=projects/proj-06-context-engine/README.md">proj-06: context engine</a>.</div></li>
+    <li><span class="t"><a href="quiz.html">Drill every domain — 🎯 quiz mode</a></span>
+      <div class="d">Interactive scenario MCQs with instant feedback, "why the distractor is wrong" explanations, and best-score tracking. (Prefer reading? The <a href="viewer.html?doc=practice/README.md">printable drills</a> have the same questions.)</div></li>
+    <li><span class="t"><a href="viewer.html?doc=capstone/enterprise-agent-platform/README.md">Capstone: Enterprise Agent Platform</a></span>
+      <div class="d">Stitch the six builds into one governed system — the portfolio piece that says <em>architect</em>.</div></li>
+    <li><span class="t"><a href="viewer.html?doc=practice/mock-exam.md">Timed mock exam → book the real one</a></span>
+      <div class="d">Closed-book, mixed scenarios. Score ≥10/12, review misses against the <a href="viewer.html?doc=BLUEPRINT.md#high-frequency-exam-traps-the-distractors-that-look-smart-but-are-wrong">14 traps</a>, then book.</div></li>
+  </ol>
+
+  <h2>The five exam domains</h2>
+  <div id="weights"></div>
+
+  <h2>Practice anywhere — three ways to run the code</h2>
+  <p>Every exercise and project can be done with <b>zero-install (Colab)</b> or on your machine. Pick the lane
+  that matches your setup; the code is identical.</p>
+  <div class="threeway">
+    <div class="card ours">
+      <div class="kind">☁️ Google Colab — zero install</div>
+      <h4>Run in the browser</h4>
+      <ol>
+        <li>Open <a href="notebooks/foundations-api.ipynb">notebooks/foundations-api.ipynb</a> in Colab
+          (File → Upload, or open it straight from GitHub once this repo is pushed).</li>
+        <li>Run the first cell — it installs the SDK and asks for your API key with a hidden prompt
+          (<a href="viewer.html?doc=reference/getting-started.md">get a key</a>).</li>
+        <li>Run the 10 exercises top to bottom. Total cost: a few cents on Haiku.</li>
+      </ol>
+    </div>
+    <div class="card ours">
+      <div class="kind">🖥️ VS Code — Copilot Chat or Claude Code</div>
+      <h4>Learn inside your editor</h4>
+      <ol>
+        <li>Create a folder, `pip install anthropic`, export your key, and work through
+          <a href="viewer.html?doc=practice/foundations-api.md">the exercises</a> as .py files.</li>
+        <li>Stuck? Ask <b>Copilot Chat</b> (pick a Claude model) or the <b>Claude Code extension</b> to explain
+          the error — you're literally using the Domain 3 material while studying it.</li>
+        <li><a href="illustrated/api-foundations/same-concepts-everywhere.html">This explainer</a> maps every
+          editor feature to the API concept underneath.</li>
+      </ol>
+    </div>
+    <div class="card ours">
+      <div class="kind">⌨️ Terminal — Claude Code CLI / claude.ai</div>
+      <h4>Interactive &amp; agentic</h4>
+      <ol>
+        <li>Domain 3 is hands-on by nature: install the <b>Claude Code CLI</b> and do the CLAUDE.md / hooks /
+          headless exercises in a real repo.</li>
+        <li>Use <b>claude.ai</b> to test prompt-engineering patterns interactively before coding them.</li>
+        <li>Projects 1–6 run from any of the three lanes — each brief says what it needs.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>Which model, when — with real numbers</h2>
+  <p>"Use the cheapest capable model" only sticks when you've seen the actual math. The
+  <a href="illustrated/api-foundations/model-selection.html">model-selection explainer</a> now has a
+  <b>cost calculator</b>: dial in your volume and token sizes and watch the monthly bill for Haiku vs Sonnet vs
+  Opus — e.g. classifying <b>1M support tickets</b> is ≈ <b>$650 on Haiku</b> vs ≈ <b>$9,750 on Opus</b> for
+  near-identical accuracy on that task. Three worked case studies show how an architect actually decides.</p>
+
+  <h2>What you'll ship (the résumé part)</h2>
+  <div class="grid">
+    <a class="card ours" href="viewer.html?doc=projects/proj-01-support-agent/README.md"><div class="kind">proj-01</div><h4>Customer-Support Agent</h4><p>Tools + guardrails + human approval + escalation; evaluated at 80%+ resolution.</p></a>
+    <a class="card ours" href="viewer.html?doc=projects/proj-02-multi-agent-research/README.md"><div class="kind">proj-02</div><h4>Multi-Agent Research System</h4><p>Lead + isolated subagents, provenance, partial-failure handling.</p></a>
+    <a class="card ours" href="viewer.html?doc=projects/proj-03-mcp-server/README.md"><div class="kind">proj-03</div><h4>Custom MCP Server</h4><p>Publishable server any Claude host can install — tools, resources, prompts.</p></a>
+    <a class="card ours" href="viewer.html?doc=projects/proj-04-claude-code-cicd/README.md"><div class="kind">proj-04</div><h4>Claude Code in CI/CD</h4><p>Headless PR review + test-gen Action, hooks, layered CLAUDE.md.</p></a>
+    <a class="card ours" href="viewer.html?doc=projects/proj-05-structured-extraction/README.md"><div class="kind">proj-05</div><h4>Extraction Pipeline</h4><p>Schema contracts, nullable handling, Batch API, LLM-as-judge evals.</p></a>
+    <a class="card ours" href="viewer.html?doc=projects/proj-06-context-engine/README.md"><div class="kind">proj-06</div><h4>Context Engine</h4><p>Compaction + verbatim memory + caching; 100-turn sessions at flat cost.</p></a>
+    <a class="card ours" href="viewer.html?doc=capstone/enterprise-agent-platform/README.md" style="border-color:var(--clay);"><div class="kind">⭐ capstone</div><h4>Enterprise Agent Platform</h4><p>All six under one governance spine: routing, cost, guardrails, evals, audit.</p></a>
+  </div>
+
+  <div class="footer">
+    Free &amp; open: vanilla HTML/CSS/JS, no build step, deploys on any static host —
+    <a href="viewer.html?doc=DEPLOY.md">deploy your own copy in 5 minutes</a>.
+    Independent study track, not affiliated with Anthropic. Confirm current exam details on Anthropic's official
+    certification page before booking.
+  </div>
+</div>
+
+<script src="illustrated/assets/app.js"></script>
+<script>
+(function () {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- hero: a live agent loop ----
+  (function hero() {
+    const svg = document.getElementById('herosvg');
+    const NS = 'http://www.w3.org/2000/svg';
+    const mk = (t, a) => { const n = document.createElementNS(NS, t);
+      for (const k in a) n.setAttribute(k, a[k]); svg.appendChild(n); return n; };
+    // triangle loop path (think → act → observe → think)
+    const P = 'M 90 62 L 250 62 L 170 196 Z';
+    mk('path', { d: P, fill: 'none', stroke: 'rgba(255,255,255,.22)', 'stroke-width': 2.5, 'stroke-dasharray': '6 5' });
+    const NODES = [[90, 62, '🧠 Think', 'rgba(255,138,92,.13)', '#ff8a5c'], [250, 62, '🔧 Act', 'rgba(74,222,128,.11)', '#4ade80'], [170, 196, '👀 Observe', 'rgba(255,194,77,.11)', '#ffc24d']];
+    NODES.forEach(([x, y, t, bg, fg]) => {
+      mk('rect', { x: x - 52, y: y - 21, width: 104, height: 42, rx: 12, fill: bg, stroke: fg, 'stroke-width': 1.6 });
+      const tx = mk('text', { x, y: y + 5, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: fg });
+      tx.textContent = t;
+    });
+    const dot = mk('circle', { r: 6, fill: '#ff8a5c' });
+    const glow = mk('circle', { r: 13, fill: 'rgba(255,138,92,.3)' });
+    const track = document.createElementNS(NS, 'path'); track.setAttribute('d', P);
+    const len = track.getTotalLength();
+    let t0 = null;
+    function tick(ts) {
+      if (t0 === null) t0 = ts;
+      const p = track.getPointAtLength((((ts - t0) / 5200) % 1) * len);
+      dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+      glow.setAttribute('cx', p.x); glow.setAttribute('cy', p.y);
+      requestAnimationFrame(tick);
+    }
+    if (reduce) { const p = track.getPointAtLength(0); dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y); glow.remove(); }
+    else requestAnimationFrame(tick);
+  })();
+
+  // ---- count-up stats ----
+  document.querySelectorAll('#stats .n').forEach(el => {
+    const target = +el.dataset.n;
+    if (reduce) { el.textContent = target; return; }
+    const t0 = performance.now(), dur = 1100;
+    (function step(ts) {
+      const k = Math.min(1, (ts - t0) / dur);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
+  });
+
+  // ---- domain weight bars (animate in on scroll) ----
+  const W = [
+    ['Agentic Architecture & Orchestration', 27, 'illustrated/1-agentic/agent-loop.html'],
+    ['Claude Code Configuration', 20, 'illustrated/3-claude-code/claudemd-hierarchy.html'],
+    ['Prompt Engineering & Structured Output', 20, 'illustrated/4-prompting/prompt-anatomy.html'],
+    ['Tool Design & MCP Integration', 18, 'illustrated/2-tools-mcp/tool-anatomy.html'],
+    ['Context Management & Reliability', 15, 'illustrated/5-context/context-window.html'],
+  ];
+  const wEl = document.getElementById('weights');
+  wEl.innerHTML = W.map(([n, w, h]) =>
+    '<div class="wbar"><a href="' + h + '">' + n + '</a>' +
+    '<div class="track"><div class="fill" data-w="' + (w / 27 * 100) + '" style="width:0%;transition:width .9s cubic-bezier(.2,.8,.2,1);"></div></div>' +
+    '<span class="pct">' + w + '%</span></div>').join('');
+  const grow = () => wEl.querySelectorAll('.fill').forEach((f, i) =>
+    setTimeout(() => { f.style.width = f.dataset.w + '%'; }, i * 90));
+  if (reduce || typeof IntersectionObserver !== 'function') grow();
+  else { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { grow(); io.disconnect(); } });
+    io.observe(wEl); }
+
+  // progress panel (localStorage written by app.js on each explainer visit)
+  try {
+    const visited = JSON.parse(localStorage.getItem('cca-visited') || '{}');
+    const seq = (window.Ill && Ill.SEQ) || [];
+    const done = seq.filter(s => visited[s[0]]).length;
+    if (done > 0 && seq.length) {
+      const panel = document.getElementById('progressPanel');
+      panel.style.display = '';
+      document.getElementById('pfill').style.width = Math.round(done / seq.length * 100) + '%';
+      document.getElementById('ptext').textContent =
+        done + ' / ' + seq.length + ' explainers explored';
+      // resume: first unvisited in sequence order
+      const next = seq.find(s => !visited[s[0]]);
+      const a = document.getElementById('presume');
+      if (next) { a.textContent = 'Resume → ' + next[1]; a.href = 'illustrated/' + next[0]; }
+      else { a.textContent = 'All done — take the mock exam →'; a.href = 'viewer.html?doc=practice/mock-exam.md'; }
+    }
+  } catch (e) { /* localStorage unavailable — fine */ }
+})();
+</script>
+</body>
+</html>

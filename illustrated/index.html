@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Certified Architect — Illustrated Explainers</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">🏛️ Home</a>
+  <span class="brand">Illustrated</span>
+  <span class="spacer"></span>
+  <a href="../viewer.html?doc=BLUEPRINT.md">Exam blueprint</a>
+  <a href="../viewer.html?doc=STUDY-PLAN.md">Study plan</a>
+  <a href="../viewer.html?doc=projects/README.md">Projects</a>
+  <a href="../hangar.html">🚀 Hangar</a>
+  <a href="../quiz.html">🎯 Quiz</a>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Illustrated — Claude Certified Architect</h1>
+    <p class="lede">Visual, hands-on intuition for every domain of the <b>Claude Certified Architect
+    (Foundations)</b> exam. Each card is an <b>interactive explainer</b> you can click and drive — built to make
+    the idea obvious to a curious 10-year-old <em>and</em> precise enough to pass a proctored exam. We build the
+    explainers, and link the world's best existing ones.</p>
+  </div>
+
+  <div class="legend">
+    <span><b class="ours">🏛️ Ours</b> — interactive explainer built for this cert</span>
+    <span><b class="curated">🔗 Curated</b> — a world-class existing resource</span>
+    <span class="muted">domain weights show on each header →</span>
+  </div>
+
+  <div id="progressRow" style="display:none;margin:6px 0 2px;">
+    <div style="background:var(--light);border-radius:6px;height:12px;overflow:hidden;">
+      <div id="pfill" style="height:100%;background:var(--green);width:0%;transition:width .4s;"></div></div>
+    <p class="small muted" style="margin:6px 0 0;"><span id="ptext"></span>
+      <a id="presume" href="#" style="margin-left:10px;font-weight:700;"></a></p>
+  </div>
+
+  <input id="search" class="searchbar" type="text" placeholder="Search concepts (e.g. agent loop, MCP, CLAUDE.md, caching, nullable)…" autocomplete="off">
+  <div id="catalog"></div>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect certification site</a>. Built with vanilla HTML/CSS/JS —
+    no frameworks, no dependencies, works offline. Start at <a href="api-foundations/what-is-the-api.html">What is
+    the API?</a> and follow the Next → arrows through all five domains.
+  </div>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+const GROUPS = [
+  { phase:"Foundations · Building with the Claude API — START HERE", wt:"ground-up", items:[
+    { title:"What is the Claude API?", kind:"ours", desc:"CLI vs API vs SDK, untangled. The same request shown at 4 layers (curl → Python → Java → Claude Code). Read this first.", href:"api-foundations/what-is-the-api.html" },
+    { title:"Same concepts, different surface", kind:"ours", desc:"Maps every API concept onto claude.ai, VS Code + Copilot Chat, and the VS Code Claude Code extension — the UI IS the harness.", href:"api-foundations/same-concepts-everywhere.html" },
+    { title:"Getting your API key", kind:"ours", desc:"Console signup, billing, creating a key, storing it safely, and the errors you'll actually hit (401/429/etc).", href:"../viewer.html?doc=reference/getting-started.md" },
+    { title:"The Messages API", kind:"ours", desc:"Your first Python call; the request AND the response, field by field; why it's stateless. Concrete, gentle.", href:"api-foundations/messages-api.html" },
+    { title:"The parameters that matter", kind:"ours", desc:"Flip model, max_tokens, system, temperature, stop_sequences, stream — what each does and when to turn it.", href:"api-foundations/parameters.html" },
+    { title:"How to read the API docs", kind:"ours", desc:"Stop feeling lost in the reference. Learn its predictable shape and answer your own 'how do I…?' in 30s.", href:"api-foundations/reading-the-docs.html" },
+    { title:"Opus / Sonnet / Haiku", kind:"ours", desc:"Route each workload to the cheapest capable model; the cost-vs-capability trade-off.", href:"api-foundations/model-selection.html" },
+    { title:"Extended thinking", kind:"ours", desc:"Slide the thinking budget; watch accuracy rise then flatten as cost & latency climb.", href:"api-foundations/extended-thinking.html" },
+    { title:"🏃 Hands-on: run the API yourself (Python)", kind:"ours", desc:"10 runnable exercises with setup, expected outputs & a Java bridge — learning that sticks because you DO it.", href:"../viewer.html?doc=practice/foundations-api.md" },
+    { title:"Messages API reference (as a lookup)", kind:"curated", desc:"The request-params + response-fields tables. Arrive with a question, don't read cover-to-cover.", href:"https://docs.anthropic.com/en/api/messages" },
+  ]},
+  { phase:"Domain 4 · Prompt Engineering & Structured Output", wt:"20%", items:[
+    { title:"Anatomy of a prompt", kind:"ours", desc:"Toggle role, XML tags, explicit criteria & prefill on/off and watch a vague request become reliable.", href:"4-prompting/prompt-anatomy.html" },
+    { title:"Few-shot prompting", kind:"ours", desc:"Add examples one at a time; watch the tricky multi-issue case finally classify correctly.", href:"4-prompting/few-shot.html" },
+    { title:"Structured output", kind:"ours", desc:"tool_use as a JSON schema, nullable-not-invented fields, validation-retry, batch at scale.", href:"4-prompting/structured-output.html" },
+    { title:"Eval-driven prompting", kind:"ours", desc:"Run a golden set; catch the 'clever' rewrite that quietly causes a regression.", href:"4-prompting/eval-driven.html" },
+    { title:"Anthropic — Prompt engineering guide", kind:"curated", desc:"The canonical reference: clarity, examples, CoT, XML, prefilling.", href:"https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview" },
+  ]},
+  { phase:"Domain 2 · Tool Design & MCP Integration", wt:"18%", items:[
+    { title:"Anatomy of a tool", kind:"ours", desc:"Flip a tool from sloppy to sharp; the description IS the API. Required vs nullable.", href:"2-tools-mcp/tool-anatomy.html" },
+    { title:"Structured errors & retries", kind:"ours", desc:"Hand the agent an error; see it self-heal or give up based on errorCategory + isRetryable.", href:"2-tools-mcp/structured-errors.html" },
+    { title:"MCP architecture", kind:"ours", desc:"USB-C for AI: host / client / server, tools vs resources vs prompts, stdio vs HTTP.", href:"2-tools-mcp/mcp-architecture.html" },
+    { title:"modelcontextprotocol.io", kind:"curated", desc:"The open MCP spec & quickstarts.", href:"https://modelcontextprotocol.io/introduction" },
+    { title:"Anthropic — Writing tools for agents", kind:"curated", desc:"How to write tool descriptions Claude uses correctly.", href:"https://www.anthropic.com/engineering/writing-tools-for-agents" },
+  ]},
+  { phase:"Domain 1 · Agentic Architecture & Orchestration", wt:"27%", items:[
+    { title:"The agent loop", kind:"ours", desc:"Press play: think → act → observe → repeat. See exactly where the model stops and your harness starts.", href:"1-agentic/agent-loop.html" },
+    { title:"Workflows vs agents", kind:"ours", desc:"Five building blocks from chaining to autonomy; the one question that picks the simplest thing that works.", href:"1-agentic/workflows-vs-agents.html" },
+    { title:"Multi-agent orchestration", kind:"ours", desc:"Lead + subagents, context isolation, and handling the partial failure the exam loves.", href:"1-agentic/orchestrator-workers.html" },
+    { title:"Loop control & guardrails", kind:"ours", desc:"Tune max-turns, budget & human-in-the-loop; watch an agent finish cleanly or get halted.", href:"1-agentic/guardrails.html" },
+    { title:"Anthropic — Building Effective Agents", kind:"curated", desc:"The essay this whole domain is built on.", href:"https://www.anthropic.com/engineering/building-effective-agents" },
+    { title:"Anthropic — Multi-agent research system", kind:"curated", desc:"How Anthropic built theirs: orchestration, context, failures.", href:"https://www.anthropic.com/engineering/multi-agent-research-system" },
+  ]},
+  { phase:"Domain 3 · Claude Code Configuration & Workflows", wt:"20%", items:[
+    { title:"The CLAUDE.md hierarchy", kind:"ours", desc:"Click folders to see which user/project/directory rules apply where, and which one wins.", href:"3-claude-code/claudemd-hierarchy.html" },
+    { title:"Grep vs Glob & built-in tools", kind:"ours", desc:"Run both searches on one repo: Grep = inside files, Glob = file names. The distinction everyone fumbles.", href:"3-claude-code/grep-vs-glob.html" },
+    { title:"Skills, rules & hooks", kind:"ours", desc:"Match the task to the mechanism; the word 'deterministic' decides hook vs skill vs rule.", href:"3-claude-code/skills-rules.html" },
+    { title:"Headless mode & CI/CD", kind:"ours", desc:"Build a CI command with -p and --output-format json; session isolation and safe permissions.", href:"3-claude-code/cicd-headless.html" },
+    { title:"Claude Code documentation", kind:"curated", desc:"Official docs: memory, hooks, skills, headless, GitHub Actions.", href:"https://docs.anthropic.com/en/docs/claude-code/overview" },
+  ]},
+  { phase:"Domain 5 · Context Management & Reliability", wt:"15%", items:[
+    { title:"The context window", kind:"ours", desc:"Pack system+history+RAG+output into a fixed budget; feel context rot and output truncation.", href:"5-context/context-window.html" },
+    { title:"Prompt caching", kind:"ours", desc:"Toggle caching across 20 calls; watch the bill and the clock drop. Stable prefix first.", href:"5-context/prompt-caching.html" },
+    { title:"Compaction & memory", kind:"ours", desc:"Watch naïve summarisation silently drop the order # and dollar amount — and how to keep them.", href:"5-context/compaction.html" },
+    { title:"Reliability & escalation", kind:"ours", desc:"Handle, retry, or escalate? Escalation triggers and stopping error propagation.", href:"5-context/reliability.html" },
+    { title:"Anthropic — Effective context engineering", kind:"curated", desc:"The reference for context windows, compaction & memory.", href:"https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" },
+  ]},
+];
+
+const cat = document.getElementById('catalog');
+const visited = (window.Ill && Ill.getVisited) ? Ill.getVisited() : {};
+function render(q) {
+  cat.innerHTML = '';
+  q = (q||'').trim().toLowerCase();
+  GROUPS.forEach(g => {
+    const items = g.items.filter(it => !q || (it.title+' '+it.desc).toLowerCase().includes(q));
+    if (!items.length) return;
+    const hdr = document.createElement('div'); hdr.className = 'phasehdr';
+    hdr.innerHTML = '<h2>'+g.phase+'</h2><span class="wt">'+g.wt+'</span>';
+    cat.appendChild(hdr);
+    const grid = document.createElement('div'); grid.className = 'grid';
+    items.forEach(it => {
+      const ext = it.kind === 'curated';
+      const seen = !ext && visited[it.href];
+      const a = document.createElement('a');
+      a.className = 'card ' + (ext ? 'curated' : 'ours');
+      a.href = it.href; if (ext) { a.target = '_blank'; a.rel = 'noopener'; }
+      a.innerHTML = '<div class="kind">'+(ext?'🔗 Curated':'🏛️ Ours · interactive')+
+                    (seen?' <span style="color:var(--green);float:right;">✓ explored</span>':'')+'</div>'+
+                    '<h4>'+it.title+'</h4><p>'+it.desc+'</p>';
+      grid.appendChild(a);
+    });
+    cat.appendChild(grid);
+  });
+  if (!cat.children.length) cat.innerHTML = '<p class="muted">No matches. Try "agent", "MCP", "caching", "schema"…</p>';
+}
+document.getElementById('search').addEventListener('input', e => render(e.target.value));
+render('');
+
+// progress bar + resume (shared localStorage written by app.js on each explainer visit)
+(function () {
+  try {
+    const seq = (window.Ill && Ill.SEQ) || [];
+    const done = seq.filter(s => visited[s[0]]).length;
+    if (!done || !seq.length) return;
+    document.getElementById('progressRow').style.display = '';
+    document.getElementById('pfill').style.width = Math.round(done / seq.length * 100) + '%';
+    document.getElementById('ptext').textContent = done + ' / ' + seq.length + ' explainers explored';
+    const next = seq.find(s => !visited[s[0]]);
+    const a = document.getElementById('presume');
+    if (next) { a.textContent = 'Resume → ' + next[1]; a.href = next[0]; }
+    else { a.textContent = 'All explored — take the mock exam →'; a.href = '../viewer.html?doc=practice/mock-exam.md'; }
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

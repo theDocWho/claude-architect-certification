@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extended thinking — giving Claude room to reason</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Building with the Claude API</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations</span>
+    <h1>Extended thinking</h1>
+    <p class="lede">For hard problems, Claude can do its reasoning <em>out loud</em> in a dedicated
+      <b>thinking</b> phase before it answers — a scratchpad you can budget with tokens. More thinking buys
+      accuracy on complex tasks, but costs tokens and latency. Slide the thinking budget and see the trade-off.</p>
+    <div class="tagrow">
+      <span class="tag key">thinking budget</span><span class="tag key">reasoning</span>
+      <span class="tag">accuracy vs cost</span><span class="tag">when to enable</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    On a hard maths problem, you do better if you <b>work it out on scratch paper</b> instead of blurting the
+    first number. Extended thinking gives Claude scratch paper. For easy questions ("what's the capital of
+    France?") it's a waste of time — just answer. For tricky multi-step puzzles, the scratch work is what gets it
+    right. You decide how much paper to hand over.
+  </div>
+
+  <h2>Dial the thinking budget</h2>
+  <p>Below, the same hard planning task is solved with different thinking budgets. Watch accuracy climb — then
+  flatten — while cost and latency keep rising. The art is finding "enough," not "maximum":</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>thinking budget <span class="val"></span></label>
+      <input id="budget" type="range" min="0" max="16000" step="1000" value="4000"></div>
+    <div class="barrow"><span class="lbl">accuracy</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="acc" class="bar" style="background:var(--green);"></div></div><span class="num" id="accN"></span></div>
+    <div class="barrow"><span class="lbl">cost</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="cost" class="bar" style="background:var(--clay);"></div></div><span class="num" id="costN"></span></div>
+    <div class="barrow"><span class="lbl">latency</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="lat" class="bar" style="background:var(--amber);"></div></div><span class="num" id="latN"></span></div>
+    <p id="note" class="note"></p>
+  </div>
+
+  <h2>When to turn it on (and off)</h2>
+  <table>
+    <tr><th>Enable thinking for…</th><th>Skip it for…</th></tr>
+    <tr><td>multi-step math, logic, planning</td><td>simple lookups & classification</td></tr>
+    <tr><td>complex agentic decisions / tool orchestration</td><td>high-volume, latency-sensitive endpoints</td></tr>
+    <tr><td>hard debugging or architecture trade-offs</td><td>tasks a smaller model already nails</td></tr>
+    <tr><td>anything where a wrong answer is expensive</td><td>creative/format tasks that don't need reasoning</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> extended thinking isn't free and isn't always better — for easy or
+  high-throughput tasks it just adds cost and latency. Match it to <b>problem difficulty</b>, and size the budget
+  with an <b>eval</b> rather than maxing it out. It also pairs with model choice: a hard task might be Sonnet +
+  thinking, or Opus — decide by measuring, not by reflex.</div>
+
+  <div class="note green"><b>Takeaways:</b> extended thinking gives Claude a token-budgeted <b>scratchpad</b>
+  before answering — real accuracy gains on <b>hard, multi-step</b> problems, wasted cost/latency on easy ones.
+  Returns flatten past "enough," so tune the budget with evals and reserve it for difficult or high-stakes tasks.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking" target="_blank" rel="noopener">Anthropic — Extended thinking</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Next domain: <a href="../4-prompting/prompt-anatomy.html">prompt engineering →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$, slider = Ill.slider, clamp = Ill.clamp;
+  slider($('#budget'), v=> v===0?'off':(v/1000)+'k tok', render);
+  function render(){
+    const b=+$('#budget').value;
+    // accuracy: saturating curve; cost & latency: linear-ish
+    const acc = b===0 ? 52 : clamp(52 + 44*(1-Math.exp(-b/4500)), 0, 97);
+    const cost = clamp(20 + b/16000*80, 0, 100);
+    const lat = clamp(15 + b/16000*85, 0, 100);
+    $('#acc').style.width=acc+'%'; $('#accN').textContent=Math.round(acc)+'%';
+    $('#cost').style.width=cost+'%'; $('#costN').textContent=Math.round(cost)+'%';
+    $('#lat').style.width=lat+'%'; $('#latN').textContent=Math.round(lat)+'%';
+    let m,c;
+    if(b===0){ m='<b>Thinking off.</b> Fast and cheap, but on this hard planning task it guesses and lands ~52%. Fine for easy tasks — not this one.'; c=''; }
+    else if(b<=4000){ m='<b>Sweet spot.</b> A modest budget jumps accuracy a lot for little cost. This is usually where you want to live.'; c='green'; }
+    else if(b<=9000){ m='<b>Diminishing returns.</b> Accuracy still creeping up, but cost & latency are climbing faster than the gains. Justify it with an eval.'; c=''; }
+    else { m='<b>Over-spending.</b> Accuracy has basically flattened while cost & latency keep rising. "Maximum thinking" is rarely the right call — find "enough."'; c=''; }
+    $('#note').className='note '+c; $('#note').innerHTML=m;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

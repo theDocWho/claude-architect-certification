@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eval-driven prompting — improve what you measure</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 4 · Prompt Engineering (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 4 · Prompt Engineering &amp; Structured Output</span>
+    <h1>Eval-driven prompting</h1>
+    <p class="lede">"It looks better" is not engineering. The architect's discipline is to build an <b>eval</b> — a
+      set of test cases with a scoring method — <em>before</em> tweaking the prompt, so every change is measured,
+      not vibed. Run a prompt against a golden set and watch a tweak help… or quietly cause a regression.</p>
+    <div class="tagrow">
+      <span class="tag key">golden set</span><span class="tag key">graders</span>
+      <span class="tag key">LLM-as-judge</span><span class="tag">regression</span>
+      <span class="tag">measure before tweak</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine practising free throws. If you just <em>feel</em> like you're improving, you'll fool yourself. So you
+    <b>keep score</b>: 10 shots, count the makes. Now when you change how you throw, the score tells you the truth
+    — better or worse. An <b>eval</b> is keeping score for prompts: a fixed list of test questions you re-grade
+    every time you change something.
+  </div>
+
+  <h2>Run the eval — then change the prompt</h2>
+  <p>A 6-case golden set scores a support-summary prompt on whether it captured the issue, the resolution, and
+  the right sentiment. Try each prompt version and read the score. The "clever" rewrite <em>feels</em> better but
+  drops a case — exactly the regression an eval catches and your gut doesn't:</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>prompt version</label>
+      <select id="ver">
+        <option value="0">v1 — baseline ("summarize this call")</option>
+        <option value="1">v2 — add explicit criteria + format</option>
+        <option value="2">v3 — add a clever "be extremely concise" line</option>
+        <option value="3">v4 — v2 + one few-shot edge-case example</option>
+      </select></div>
+    <div id="grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:6px 0 12px;"></div>
+    <div class="barrow"><span class="lbl">score</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="bar" class="bar"></div></div><span class="num" id="pct"></span></div>
+    <p id="note" class="note"></p>
+  </div>
+
+  <h2>Anatomy of an eval</h2>
+  <table>
+    <tr><th>Piece</th><th>What it is</th></tr>
+    <tr><td><b>Golden set</b></td><td>20–100+ representative inputs with expected outputs (or rubric). Include the hard/edge cases.</td></tr>
+    <tr><td><b>Grader</b></td><td>How each output is scored: exact-match, code check, or <b>LLM-as-judge</b> for open-ended quality.</td></tr>
+    <tr><td><b>Metric &amp; bar</b></td><td>One number you optimize (e.g. % correct) and a target ("ship at ≥ 0.9").</td></tr>
+    <tr><td><b>Regression gate</b></td><td>Re-run on every prompt/model change; block changes that lower the score.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> "the new prompt looks better, ship it" is always wrong — you
+  <b>measure</b> first. When outputs are open-ended (summaries, tone), the grader is often <b>LLM-as-judge</b>
+  with a clear rubric, not exact string match. And a change that raises the average but breaks an edge case is a
+  <b>regression</b> — which is exactly why you keep the hard cases in the set.</div>
+
+  <div class="note green"><b>Takeaways:</b> build an <b>eval before tweaking</b> — a <b>golden set</b> (with edge
+  cases), a <b>grader</b> (exact-match, code, or <b>LLM-as-judge</b>), a <b>metric + bar</b>, and a
+  <b>regression gate</b>. Measure every prompt or model change; trust the score, not the vibe. A higher average
+  that breaks a case is still a regression.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/test-and-evaluate/develop-tests" target="_blank" rel="noopener">Anthropic — Create strong empirical evaluations</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 4.
+    Next domain: <a href="../5-context/context-window.html">context management →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  // pass/fail per case for each version (case 6 is the tricky edge case)
+  const V = [
+    { res:[1,1,0,1,0,0], t:'<b>Baseline = 50%.</b> No criteria, so format and sentiment wander. This is your honest starting line — now every change is measured against it.' },
+    { res:[1,1,1,1,1,0], t:'<b>83% — real improvement.</b> Explicit criteria + format fixed four cases. Only the tricky multi-issue edge case (#6) still fails. Measured, not guessed.' },
+    { res:[1,1,1,0,1,0], t:'<b>67% — a REGRESSION!</b> "Be extremely concise" felt smart but made it drop the resolution on case #4. Your gut said "better"; the eval said "worse." This is the whole point.' },
+    { res:[1,1,1,1,1,1], t:'<b>100% — ship it.</b> Adding one few-shot example for the multi-issue case closed the last gap, with no regressions. Now you have evidence, not vibes.' },
+  ];
+  const sel=$('#ver');
+  function show(){ const v=V[+sel.value]; const grid=$('#grid'); grid.innerHTML='';
+    v.res.forEach((r,i)=> grid.appendChild(el('div',{
+      style:{textAlign:'center',padding:'8px 0',borderRadius:'8px',fontWeight:'700',
+        background:r?'#e7f3ec':'#fbe6e0',color:r?'var(--green)':'var(--red)',border:'1px solid '+(r?'#b3dcc3':'#e8b6a6')},
+      html:'#'+(i+1)+'<br>'+(r?'✓':'✗')})));
+    const pct=Math.round(v.res.reduce((a,b)=>a+b,0)/v.res.length*100);
+    $('#bar').style.width=pct+'%'; $('#bar').style.background = pct>=90?'var(--green)':pct>=70?'var(--clay)':'var(--red)';
+    $('#pct').textContent=pct+'%';
+    $('#note').className='note '+(pct>=83?'green':''); $('#note').innerHTML=v.t; }
+  sel.addEventListener('change',show); show();
+})();
+</script>
+</body>
+</html>

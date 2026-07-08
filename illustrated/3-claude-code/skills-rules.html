@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skills, rules & hooks — extending Claude Code</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 3 · Claude Code Configuration (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 3 · Claude Code Configuration</span>
+    <h1>Skills, rules &amp; hooks</h1>
+    <p class="lede">Beyond CLAUDE.md, three mechanisms shape how Claude Code behaves: <b>rules</b>
+      (path-scoped instructions that auto-attach), <b>skills</b> (packaged capabilities Claude invokes when
+      relevant), and <b>hooks</b> (deterministic scripts the harness runs on events). The exam tests <em>which
+      one to reach for</em> — and the answer hinges on one word: <b>deterministic</b>.</p>
+    <div class="tagrow">
+      <span class="tag key">.claude/rules/</span><span class="tag key">skills</span>
+      <span class="tag key">hooks</span><span class="tag">context: fork</span>
+      <span class="tag">allowed-tools</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Three ways to teach a helper: <b>rules</b> are sticky notes that appear only when you're in the right room
+    ("in the kitchen, wash your hands"). <b>Skills</b> are little instruction booklets the helper grabs <em>when
+    the task needs them</em> ("how to bake bread"). <b>Hooks</b> are an automatic machine that <em>always</em>
+    runs at a moment, no thinking required ("every time the door opens, the light turns on"). If it MUST happen
+    every single time, that's a job for the machine — a hook.
+  </div>
+
+  <h2>Which mechanism? Match the task</h2>
+  <p>Pick a goal and see which tool fits — and why the others don't:</p>
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>I want to…</label>
+      <select id="goal">
+        <option value="0">…apply backend-only style rules when editing files under /backend</option>
+        <option value="1">…ALWAYS run the linter after any file edit, no exceptions</option>
+        <option value="2">…give Claude a reusable "generate a PRD" capability it uses when asked</option>
+        <option value="3">…block edits to secrets.env entirely</option>
+        <option value="4">…run a big code-review in a clean, isolated context</option>
+      </select></div>
+    <div id="answer"></div>
+  </div>
+
+  <h2>The three, compared</h2>
+  <table>
+    <tr><th></th><th>Rules</th><th>Skills</th><th>Hooks</th></tr>
+    <tr><td><b>Lives in</b></td><td><code>.claude/rules/*.md</code> with YAML frontmatter</td><td><code>.claude/skills/&lt;name&gt;/SKILL.md</code></td><td><code>settings.json</code> → command scripts</td></tr>
+    <tr><td><b>Triggered by</b></td><td>path globs (auto-attaches by file scope)</td><td>the model, when the task matches its description</td><td>events (PreToolUse, PostToolUse, Stop…)</td></tr>
+    <tr><td><b>Who decides</b></td><td>harness (by path)</td><td>the <em>model</em> (probabilistic)</td><td>the <em>harness</em> (deterministic)</td></tr>
+    <tr><td><b>Use when</b></td><td>guidance should apply only in part of the repo</td><td>a capability is occasionally useful</td><td>something MUST happen every time</td></tr>
+  </table>
+  <p>Skills can declare <code>allowed-tools</code> (restrict what they may call) and <code>context: fork</code>
+  (run in an isolated sub-context so a big task doesn't pollute the main conversation — closely related to the
+  multi-agent isolation idea in Domain 1).</p>
+
+  <div class="note clay"><b>Exam trap:</b> the deciding word is <b>deterministic</b>. "Always", "must", "every
+  time", "block", "enforce" → <b>hook</b>, because the model <em>asking</em> to do something isn't a guarantee.
+  "When relevant / when asked" → <b>skill</b>. "Only in this folder" → <b>rule</b>. Putting a hard guarantee in a
+  prompt/skill (which the model can skip) is the classic wrong answer.</div>
+
+  <div class="note green"><b>Takeaways:</b> <b>rules</b> = path-scoped instructions (harness attaches by glob);
+  <b>skills</b> = packaged capabilities the <em>model</em> invokes when relevant (can set <code>allowed-tools</code>
+  + <code>context: fork</code>); <b>hooks</b> = deterministic scripts the <em>harness</em> runs on events. If it
+  MUST happen every time, use a <b>hook</b> — prompts and skills are probabilistic, hooks are guaranteed.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener">Claude Code — Hooks</a> ·
+  <a href="https://docs.anthropic.com/en/docs/claude-code/skills" target="_blank" rel="noopener">Skills</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 3.
+    Next: <a href="cicd-headless.html">headless mode & CI/CD →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const A = [
+    { pick:'Rule', cls:'note', t:'<b>→ A path-scoped rule.</b> Create <code>.claude/rules/backend.md</code> with frontmatter <code>globs: ["backend/**"]</code>. The harness auto-attaches it only when files in that subtree are in play. (A directory <code>CLAUDE.md</code> also works; rules give finer glob control.)' },
+    { pick:'Hook', cls:'note green', t:'<b>→ A hook.</b> "ALWAYS… no exceptions" = deterministic, so a <code>PostToolUse</code> hook on Edit/Write that runs the linter. A prompt or skill could be skipped by the model; a hook cannot.' },
+    { pick:'Skill', cls:'note', t:'<b>→ A skill.</b> Package it as <code>.claude/skills/prd/SKILL.md</code> with a description like "generate a PRD." The model invokes it when the task matches — occasional, model-decided capability.' },
+    { pick:'Hook', cls:'note green', t:'<b>→ A hook (PreToolUse, blocking).</b> A guarantee/guardrail must be enforced by the harness. A <code>PreToolUse</code> hook that denies edits to <code>secrets.env</code> can\'t be talked around — unlike an instruction in CLAUDE.md.' },
+    { pick:'Skill (context: fork)', cls:'note', t:'<b>→ A skill with <code>context: fork</code>.</b> Running the review in a forked, isolated context keeps its large output from polluting your main conversation — same isolation principle as multi-agent subagents.' },
+  ];
+  const sel = $('#goal');
+  function show(){ const a = A[+sel.value]; const d = $('#answer');
+    d.innerHTML = '<div class="'+a.cls+'"><span class="chip sel" style="margin-bottom:8px;display:inline-block;">Best fit: '+a.pick+'</span><br>'+a.t+'</div>'; }
+  sel.addEventListener('change', show); show();
+})();
+</script>
+</body>
+</html>

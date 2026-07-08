@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opus / Sonnet / Haiku — choosing the right Claude</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Building with the Claude API</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations</span>
+    <h1>Choosing the right Claude</h1>
+    <p class="lede">There isn't one Claude — there's a family that trades <b>intelligence</b> against <b>speed</b>
+      and <b>cost</b>. <b>Opus</b> is the deepest reasoner, <b>Sonnet</b> the balanced workhorse, <b>Haiku</b> the
+      fast-and-cheap one. An architect routes each task to the cheapest model that still clears the bar. Pick a
+      workload and see which fits.</p>
+    <div class="tagrow">
+      <span class="tag key">Opus = smartest</span><span class="tag key">Sonnet = balanced</span>
+      <span class="tag key">Haiku = fastest/cheapest</span><span class="tag">model routing</span>
+      <span class="tag">cost vs capability</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine three helpers. <b>Haiku</b> is a quick, cheerful kid who answers easy questions in a flash for pocket
+    change. <b>Sonnet</b> is a clever teenager who handles most real homework well and fast. <b>Opus</b> is the
+    professor — brilliant at the hardest puzzles, but slower and pricier, so you only call them in for the truly
+    tough stuff. Smart teams use the quick kid for easy jobs and save the professor for hard ones.
+  </div>
+
+  <h2>Match the model to the job</h2>
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>workload</label>
+      <select id="job">
+        <option value="haiku">classify 1M support tickets into 5 buckets</option>
+        <option value="haiku2">extract fields from simple, clean forms at high volume</option>
+        <option value="sonnet">a customer-support agent (tools, multi-turn, reliable)</option>
+        <option value="sonnet2">generate and edit production code in Claude Code</option>
+        <option value="opus">architect a novel multi-agent research system from scratch</option>
+        <option value="opus2">deep multi-step financial/legal reasoning where errors are costly</option>
+      </select></div>
+    <div id="pickrow" style="display:flex;gap:8px;margin:8px 0 12px;"></div>
+    <p id="why" class="note"></p>
+  </div>
+
+  <h2>The trade-off, and how architects use it</h2>
+  <table>
+    <tr><th>Model</th><th>Best at</th><th>Relative cost / speed</th></tr>
+    <tr><td><b>Haiku</b></td><td>high-volume, well-defined tasks: classification, simple extraction, routing, guardrail checks.</td><td>cheapest · fastest</td></tr>
+    <tr><td><b>Sonnet</b></td><td>the default workhorse: agents, coding, RAG, most production features.</td><td>mid · fast</td></tr>
+    <tr><td><b>Opus</b></td><td>the hardest reasoning: complex agents, novel architecture, high-stakes analysis.</td><td>priciest · deepest</td></tr>
+  </table>
+  <p><b>Route, don't pick once.</b> A great pattern (from Domain 1's <em>routing</em>): use Haiku to triage and
+  answer easy cases, and escalate only the hard ones to Sonnet or Opus. You get most of the quality at a fraction
+  of the cost. Pair this with <b>prompt caching</b> and the <b>Batch API</b> for the biggest savings.</p>
+
+  <h2 id="cost">The actual math — dial in your workload</h2>
+  <p>Intuition only sticks with numbers. Model pricing is <b>per million tokens</b> (MTok), input and output
+  priced separately. Set your monthly volume and per-request sizes; the bars show what each model would cost.
+  Then flip on the two big levers — <b>Batch API</b> (~50% off, for non-realtime bulk) and <b>prompt caching</b>
+  (repeated prefix reads at ~10%) — and watch them stack:</p>
+
+  <div class="panel">
+    <div class="btnrow">
+      <button id="p1" class="ghost">📨 1M support tickets</button>
+      <button id="p2" class="ghost">💻 team code assistant</button>
+      <button id="p3" class="ghost">📄 nightly doc extraction</button>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label>requests / month <span class="val"></span></label>
+        <input id="reqs" type="range" min="0" max="100" value="76"></div>
+      <div class="ctrl"><label>input tokens / request <span class="val"></span></label>
+        <input id="tin" type="range" min="100" max="20000" step="100" value="400"></div>
+      <div class="ctrl"><label>output tokens / request <span class="val"></span></label>
+        <input id="tout" type="range" min="50" max="2000" step="50" value="50"></div>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="batch"> Batch API (−50%, async bulk)</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="cache"> cache the prefix (80% of input reads at 10%)</label>
+    </div>
+    <div id="costbars"></div>
+    <p id="costnote" class="note"></p>
+    <p class="small muted" style="margin:8px 0 0;">Illustrative per-MTok pricing (input / output): Haiku $1 / $5 ·
+    Sonnet $3 / $15 · Opus $15 / $75. Always check the
+    <a href="https://docs.anthropic.com/en/docs/about-claude/pricing" target="_blank" rel="noopener">current pricing page</a> —
+    the <em>ratios</em> and the reasoning are what matter here.</p>
+  </div>
+
+  <h2>Three worked decisions (how an architect actually reasons)</h2>
+
+  <h3>Case 1 — "Classify 1M support tickets a month into 5 categories"</h3>
+  <p>Short input (~400 tokens), tiny output (~50), and a <b>well-defined</b> task. Run the eval: Haiku scores 94%,
+  Sonnet 96%, Opus 96.5%. The math: <b>Haiku ≈ $650/mo</b>, Sonnet ≈ $1,950, Opus ≈ $9,750. Is 2 points of
+  accuracy worth <b>$1,300/month</b>? For ticket routing (a mis-route just lands in a review queue) — no.
+  <b>Decision: Haiku</b>, with the eval as proof. <em>The upgrade twist:</em> route the ~10% of tickets Haiku
+  marks low-confidence to Sonnet — total ≈ $780/mo, near-Sonnet quality at 40% of Sonnet's price. That hybrid is
+  the "router" pattern paying rent.</p>
+
+  <h3>Case 2 — "A coding assistant for a 20-dev team"</h3>
+  <p>~88k requests/mo, but each carries big context (~6k tokens of repo + rules) and real output (~800). This is
+  multi-step reasoning over code — Haiku's eval score drops hard here, so it's out. <b>Sonnet ≈ $2,640/mo</b> raw.
+  Now the levers: the repo context + system prompt is a <b>stable, repeated prefix</b> → cache it, and input cost
+  collapses: ≈ <b>$1,500/mo</b>. Opus would be ≈ $13,200 <em>before</em> caching — reserved for the occasional
+  gnarly architecture question, invoked explicitly, not as the default. <b>Decision: Sonnet + caching, Opus
+  on-demand.</b></p>
+
+  <h3>Case 3 — "Extract fields from 150k scanned invoices, nightly"</h3>
+  <p>~2k tokens in, ~300 out, schema-constrained (Domain 4), and <b>nobody is waiting on the response</b> — it
+  runs overnight. Haiku ≈ $525/mo in a real-time loop… but "overnight" is the tell: use the <b>Batch API</b> →
+  ≈ <b>$262/mo</b>. Garbled docs that fail validation twice get flagged and re-run through Sonnet
+  (~5% → +$50). <b>Decision: Haiku + Batch + Sonnet fallback ≈ $310/mo</b> — versus ≈ $19,500 if someone had
+  "just used the best model" in a real-time loop. Same task, <b>60× cheaper</b>, measurably equal output.</p>
+
+  <div class="note clay"><b>Exam trap:</b> "always use the most powerful model" is wrong — it's slow and
+  expensive for tasks a smaller model nails. The architect's answer is the <b>cheapest model that meets the
+  quality bar</b>, often with a <b>router</b> sending only hard cases up the ladder. Decide the bar with an
+  <b>eval</b> (Domain 4), not a guess.</div>
+
+  <div class="note green"><b>Takeaways:</b> <b>Haiku</b> = fast/cheap for high-volume, well-defined work;
+  <b>Sonnet</b> = balanced default for agents/coding/RAG; <b>Opus</b> = deepest reasoning for hard, high-stakes,
+  novel tasks. Don't default to the biggest — <b>route</b> tasks to the cheapest model that clears the bar, prove
+  the bar with evals, and stack caching + batching for cost.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/about-claude/models/overview" target="_blank" rel="noopener">Anthropic — Models overview</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Next: <a href="extended-thinking.html">extended thinking →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  const MODELS = ['Haiku','Sonnet','Opus'];
+  const JOBS = {
+    haiku:  { m:'Haiku', t:'<b>→ Haiku.</b> A simple 5-way classification at huge volume is exactly Haiku\'s sweet spot: fast and cheap. Spending Opus here would cost 10×+ for no accuracy gain you\'d notice. (Validate with an eval.)' },
+    haiku2: { m:'Haiku', t:'<b>→ Haiku.</b> Clean, structured forms at high volume → cheapest capable model. Add the <b>Batch API</b> for ~50% more savings. Reserve bigger models for the messy, ambiguous documents.' },
+    sonnet: { m:'Sonnet', t:'<b>→ Sonnet.</b> The balanced default for a real tool-using, multi-turn agent: strong reasoning, good speed, sensible cost. Route only genuinely hard or sensitive cases up to Opus.' },
+    sonnet2:{ m:'Sonnet', t:'<b>→ Sonnet.</b> Production coding/agentic work is Sonnet\'s home turf — capable and fast enough for an interactive loop. Opus for the occasional gnarly design problem.' },
+    opus:   { m:'Opus', t:'<b>→ Opus.</b> Novel, open-ended architecture with lots of interacting parts rewards the deepest reasoner. Worth the premium when the task is hard and the design quality compounds.' },
+    opus2:  { m:'Opus', t:'<b>→ Opus.</b> When errors are expensive (financial/legal, multi-step reasoning), pay for the strongest model — and likely add a verification pass. Here capability beats cost.' },
+  };
+  const sel=$('#job');
+  function show(){ const j=JOBS[sel.value] || JOBS.haiku; const row=$('#pickrow'); row.innerHTML='';
+    MODELS.forEach(m=> row.appendChild(el('div',{
+      class:'chip '+(m===j.m?'sel':''),
+      style:{fontWeight:m===j.m?'700':'400',opacity:m===j.m?'1':'.5'},
+      text:(m===j.m?'✓ ':'')+m})));
+    $('#why').className='note green'; $('#why').innerHTML=j.t; }
+  sel.addEventListener('change',show); show();
+
+  // ---- cost calculator ----
+  const PRICE = { Haiku:[1,5], Sonnet:[3,15], Opus:[15,75] };   // $/MTok in, out (illustrative)
+  const COLORS = { Haiku:'var(--green)', Sonnet:'var(--clay)', Opus:'var(--red)' };
+  const sig2 = n => { const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1)); return Math.round(n / p) * p; };
+  const fmtN = n => n >= 1e6 ? (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M' : n >= 1e3 ? (n/1e3).toFixed(0) + 'k' : String(n);
+  const fmt$ = n => '$' + Math.round(n).toLocaleString('en-US');
+
+  const reqs = $('#reqs'), tin = $('#tin'), tout = $('#tout');
+  const count = () => sig2(Math.pow(10, 3 + (+reqs.value) / 100 * 3.3));   // 1k … ~2M, log scale
+
+  function calc() {
+    const n = count(), ti = +tin.value, to = +tout.value;
+    const batch = $('#batch').checked, cache = $('#cache').checked;
+    const rows = Object.keys(PRICE).map(m => {
+      const [pi, po] = PRICE[m];
+      let inCost = n * ti / 1e6 * pi;
+      if (cache) inCost *= 0.2 + 0.8 * 0.1;          // 80% of input becomes cached reads at 10%
+      let outCost = n * to / 1e6 * po;
+      let total = inCost + outCost;
+      if (batch) total *= 0.5;
+      return { m, total };
+    });
+    const max = Math.max(...rows.map(r => r.total));
+    $('#costbars').innerHTML = rows.map(r =>
+      '<div class="barrow" style="grid-template-columns:70px 1fr 90px;">' +
+      '<span class="lbl">' + r.m + '</span>' +
+      '<div style="background:var(--light);border-radius:4px;overflow:hidden;">' +
+      '<div class="bar" style="width:' + Math.max(2, r.total / max * 100) + '%;background:' + COLORS[r.m] + ';"></div></div>' +
+      '<span class="num">' + fmt$(r.total) + '/mo</span></div>').join('');
+    const cheapest = rows[0], priciest = rows[2];
+    const levers = (cache ? 'caching' : '') + (cache && batch ? ' + ' : '') + (batch ? 'batch' : '');
+    $('#costnote').className = 'note green';
+    $('#costnote').innerHTML = '<b>' + fmtN(count()) + ' requests × ' + fmtN(+tin.value) + ' in / ' + fmtN(+tout.value) +
+      ' out:</b> Haiku ' + fmt$(cheapest.total) + ' vs Opus ' + fmt$(priciest.total) +
+      ' — a <b>' + (priciest.total / cheapest.total).toFixed(0) + '× spread</b> for the same call pattern' +
+      (levers ? ', with <b>' + levers + '</b> applied' : '') +
+      '. The architect\'s question is never "which is best?" — it\'s <b>"which is the cheapest that clears my eval bar?"</b>';
+  }
+  Ill.slider(reqs, () => fmtN(count()), calc);
+  Ill.slider(tin, v => fmtN(v) + ' tok', calc);
+  Ill.slider(tout, v => fmtN(v) + ' tok', calc);
+  $('#batch').addEventListener('change', calc);
+  $('#cache').addEventListener('change', calc);
+
+  const PRESETS = { p1:[91, 400, 50, false, false], p2:[59, 6000, 800, false, true], p3:[66, 2000, 300, true, false] };
+  Object.keys(PRESETS).forEach(id => $('#' + id).addEventListener('click', () => {
+    const [r, i, o, b, c] = PRESETS[id];
+    reqs.value = r; tin.value = i; tout.value = o; $('#batch').checked = b; $('#cache').checked = c;
+    reqs.dispatchEvent(new Event('input')); tin.dispatchEvent(new Event('input')); tout.dispatchEvent(new Event('input'));
+  }));
+  calc();
+})();
+</script>
+</body>
+</html>

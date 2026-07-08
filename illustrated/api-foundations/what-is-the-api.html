@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What is the Claude API? — CLI vs API vs SDK, untangled</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Start here</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations · Start here</span>
+    <h1>What <em>is</em> the Claude API?</h1>
+    <p class="lede">Before any code: what actually <b>is</b> this thing? Is it a program you install? A website?
+      A command? And why does everyone keep mentioning Python, an SDK, and Claude Code as if they're the same
+      thing — they're not. This page draws the whole map so nothing later feels like magic.</p>
+    <div class="tagrow">
+      <span class="tag key">API = the doorway</span><span class="tag key">SDK = a helper library</span>
+      <span class="tag key">CLI = a separate app</span><span class="tag">HTTP request</span>
+      <span class="tag">one concept, three layers</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine Claude is a brilliant chef who <b>only works in one restaurant far away</b> — you can never bring the
+    chef home. To get a meal you send an <b>order slip</b> to the restaurant, and a plate comes back. The
+    <b>API</b> is that order-slip system: a fixed way to ask and receive. An <b>SDK</b> is a friendly helper who
+    fills out the order slip <em>for</em> you in your own handwriting. And <b>Claude Code</b> is a whole different
+    restaurant chain that happens to send order slips to the same chef. Same chef, different ways of ordering.
+  </div>
+
+  <h2>The one sentence to remember</h2>
+  <p class="callout"><b>Claude runs on Anthropic's servers. You never run Claude on your machine.</b> Everything
+  you build is just different ways of <b>sending a request to those servers and reading the reply.</b></p>
+  <p>That's the whole thing. "The Claude API" is the doorway to those servers: you send it an <b>HTTP request</b>
+  (exactly like calling any REST endpoint you've used before), and it sends back a <b>JSON reply</b>. If you've
+  ever called a web service from Java, you already understand 80% of this.</p>
+
+  <h2>The three layers — click to see the SAME request at each</h2>
+  <p>Here's the key that untangles your confusion: <b>curl, the Python SDK, a Java HTTP call, and Claude Code all
+  do the same underlying thing</b> — send one HTTP request to <code>api.anthropic.com</code>. They just sit at
+  different heights above the metal. Click each layer:</p>
+
+  <div class="panel">
+    <svg id="stack" viewBox="0 0 600 250" role="img" aria-label="API layers"></svg>
+    <div class="btnrow" id="layerbtns"></div>
+    <pre id="code"></pre>
+    <p id="explain" class="note"></p>
+  </div>
+
+  <h2>So which do I use?</h2>
+  <table>
+    <tr><th>Layer</th><th>What it is</th><th>Use it when…</th></tr>
+    <tr><td><b>Raw HTTP (curl)</b></td><td><em>The API itself.</em> A plain HTTP POST. No library.</td><td>you want to <b>see exactly</b> what the API is, debug, or call from a language with no SDK.</td></tr>
+    <tr><td><b>SDK (Python / TS / …)</b></td><td>A library that <b>builds that HTTP request for you</b> and parses the reply into objects.</td><td>you're <b>writing an app</b> — 99% of the time. Less boilerplate, fewer mistakes. <b>← our main path.</b></td></tr>
+    <tr><td><b>Your own HTTP client (Java)</b></td><td>You build the same POST by hand with your language's HTTP tools.</td><td>you're in a language without an official SDK, or you like full control. <b>Same doorway.</b></td></tr>
+    <tr><td><b>Claude Code (CLI)</b></td><td>A <b>separate application</b> (a coding agent) that calls the API for you under the hood.</td><td>you want an <b>agent in your terminal</b>, not to build your own. It's a <em>product</em>, not the API. (Its own exam domain.)</td></tr>
+  </table>
+
+  <div class="note clay"><b>Why the earlier confusion?</b> The API, the SDK, and Claude Code all get called
+  "using Claude," but they're different heights on this stack. <b>The API is the doorway (HTTP). The SDK is a
+  helper that fills out the request in your language. Claude Code is a separate CLI app that uses the doorway.</b>
+  When you read "call the Claude API," picture the HTTP request — everything else is a convenience on top of it.</div>
+
+  <div class="note green"><b>Takeaways:</b> Claude lives on Anthropic's servers; you only ever <b>send a request
+  and read a reply</b>. The <b>API</b> = the HTTP doorway (send JSON, get JSON). The <b>SDK</b> = an optional
+  library that writes that HTTP for you in your language (we'll use <b>Python</b>). <b>Claude Code</b> = a
+  separate CLI app that also uses the doorway. Same chef, three ways to order — pick the SDK for building apps.</div>
+
+  <p class="small muted">Next: see this same idea show up in <b>claude.ai</b> and <b>VS Code</b> — you're using
+  this API far more often than you think.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Next: <a href="same-concepts-everywhere.html">same concepts, different surface (claude.ai / VS Code) →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, box = Ill.box, arrow = Ill.arrow;
+  const LAYERS = [
+    { key:'curl', name:'1 · Raw HTTP (curl)  — this IS the API',
+      code:
+`# The API, naked. A plain HTTP POST. No library, any OS.
+curl https://api.anthropic.com/v1/messages \\
+  -H "x-api-key: $ANTHROPIC_API_KEY" \\
+  -H "anthropic-version: 2023-06-01" \\
+  -H "content-type: application/json" \\
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 200,
+    "messages": [
+      { "role": "user", "content": "Name a tabby cat." }
+    ]
+  }'`,
+      t:'This is literally what "the Claude API" means: an HTTP endpoint you POST JSON to. Notice the pieces — a URL, auth headers, and a JSON body. <b>Every other layer builds exactly this request underneath.</b>' },
+    { key:'py', name:'2 · Python SDK  — our main path',
+      code:
+`# The SDK fills out that same HTTP request for you.
+import anthropic
+client = anthropic.Anthropic()          # reads ANTHROPIC_API_KEY from env
+
+msg = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=200,
+    messages=[
+        {"role": "user", "content": "Name a tabby cat."}
+    ],
+)
+print(msg.content[0].text)               # → "Marmalade"`,
+      t:'Same request as the curl above — the SDK just <b>writes the HTTP for you</b> and turns the JSON reply into a Python object. No headers, no manual JSON. This is what you\'ll use to build apps. <b>The API didn\'t change; only your ergonomics did.</b>' },
+    { key:'java', name:'3 · Java HTTP  — your familiar bridge',
+      code:
+`// No SDK? Build the same POST with your language's HTTP client.
+var body = """
+  { "model":"claude-sonnet-4-6", "max_tokens":200,
+    "messages":[{"role":"user","content":"Name a tabby cat."}] }
+""";
+var req = HttpRequest.newBuilder()
+    .uri(URI.create("https://api.anthropic.com/v1/messages"))
+    .header("x-api-key", System.getenv("ANTHROPIC_API_KEY"))
+    .header("anthropic-version", "2023-06-01")
+    .header("content-type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(body))
+    .build();
+var res = HttpClient.newHttpClient()
+    .send(req, HttpResponse.BodyHandlers.ofString());`,
+      t:'If you\'re a Java dev, this is comfort food: it\'s just an <code>HttpRequest</code> to a REST endpoint — the exact same one curl hit. <b>An SDK is only this, pre-written and reusable.</b> Use this to prove to yourself the API is "just a web service."' },
+    { key:'cc', name:'4 · Claude Code (CLI)  — a separate app',
+      code:
+`# Not the API — a whole application that USES the API for you.
+$ claude "refactor this file and add tests"
+
+# It's an agentic coding tool in your terminal. Under the hood it
+# makes many /v1/messages calls with tools, loops, and guardrails —
+# all hidden from you. You didn't write a request; the app did.`,
+      t:'This is the layer that confused things. Claude Code is <b>a product built on top of the API</b> — a coding agent, not the doorway itself. It\'s a different exam domain (Domain 3). When learning the API, mentally set Claude Code aside: it\'s a customer of the API, just like your app will be.' },
+  ];
+
+  function drawStack(active) {
+    const svg = $('#stack'); svg.innerHTML = '';
+    // Anthropic servers on the right
+    const server = box(svg, 500, 125, 150, 70, ['Anthropic servers', '(Claude lives here)'], '#fbeee8', '#b35a3f');
+    // the doorway
+    const door = box(svg, 320, 125, 90, 210, ['HTTP', 'doorway', '/v1/messages'], '#f2efe9', '#6b6357');
+    arrow(svg, door.x+door.w/2, door.y, server.x-server.w/2, server.y, 'var(--clay-deep)', 'request →');
+    arrow(svg, server.x-server.w/2, server.y+18, door.x+door.w/2, door.y+18, 'var(--green)', '← reply');
+    // callers on the left, stacked
+    const callers = [['curl','curl',45],['py','Python SDK',95],['java','Java HTTP',145],['cc','Claude Code',195]];
+    callers.forEach(([k,label,y]) => {
+      const on = k===active;
+      const b = box(svg, 120, y, 150, 34, [label], on?'#fbeee8':'#fff', on?'#b35a3f':'#6b6357');
+      if(on) svg.appendChild(el('rect',{x:120-b.w/2-4,y:y-21,width:b.w+8,height:42,rx:9,fill:'none',stroke:'var(--clay)','stroke-width':2.5}));
+      arrow(svg, b.x+b.w/2, y, door.x-door.w/2, 125-60+ (y-45)*0.5, on?'var(--clay-deep)':'var(--border)', '');
+    });
+    svg.appendChild(el('text',{x:120,y:232,'text-anchor':'middle','font-size':10,fill:'var(--muted)',text:'ways to send the request'}));
+  }
+
+  const btns = $('#layerbtns');
+  LAYERS.forEach((L,i) => {
+    const b = el('button', { text: L.name.split(' · ')[1] || L.name, class: i?'ghost':'' });
+    b.addEventListener('click', () => show(i));
+    btns.appendChild(b);
+  });
+  function show(i){
+    const L = LAYERS[i];
+    Array.from(btns.children).forEach((b,j)=> b.className = j===i ? '' : 'ghost');
+    $('#code').textContent = L.code;
+    $('#explain').className = 'note ' + (L.key==='py'?'green':'');
+    $('#explain').innerHTML = L.t;
+    drawStack(L.key);
+  }
+  show(0);
+})();
+</script>
+</body>
+</html>

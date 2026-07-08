@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Messages API — the request and the reply, field by field</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Building with the Claude API</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations</span>
+    <h1>The Messages API</h1>
+    <p class="lede">Now that you know the API is just an HTTP doorway, let's walk through the <b>one request</b>
+      you'll send a thousand times — and the <b>reply</b> that comes back. We'll use the <b>Python SDK</b> (with
+      the raw HTTP shown alongside, so you always see what it builds). Every agent, tool, and prompt in this whole
+      cert is <em>this call</em>, dressed up.</p>
+    <div class="tagrow">
+      <span class="tag key">messages.create()</span><span class="tag key">role: user / assistant</span>
+      <span class="tag">system</span><span class="tag">the response object</span>
+      <span class="tag">stateless</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Talking to Claude is like passing notes in class. Each note says <b>who's talking</b> ("me" or "Claude") and
+    <b>what they said</b>. Here's the twist: Claude has <b>no memory</b>. To continue a chat you don't send just
+    your new note — you re-hand Claude the <b>whole stack of notes from the beginning</b>, every single time. The
+    "conversation" is really you giving back the entire notebook on each turn, and Claude reading it fresh.
+  </div>
+
+  <h2>Your very first call (Python)</h2>
+  <p>Three lines of setup, one call. Read it top to bottom — the comments say what each piece is. (No API key
+  yet? <a href="../../viewer.html?doc=reference/getting-started.md">Getting your API key</a> is a 5-minute detour.)</p>
+  <div class="panel">
+    <pre>
+<span class="c"># one-time: pip install anthropic   +   export ANTHROPIC_API_KEY=sk-...</span>
+<span class="k">import</span> anthropic
+
+client = anthropic.Anthropic()          <span class="c"># finds your key in the environment</span>
+
+msg = client.messages.create(           <span class="c"># ← THE call. everything is this.</span>
+    model=<span class="s">"claude-sonnet-4-6"</span>,       <span class="c"># which Claude</span>
+    max_tokens=<span class="n">300</span>,                 <span class="c"># longest reply you'll allow</span>
+    system=<span class="s">"You are a concise, friendly assistant."</span>,  <span class="c"># standing instructions</span>
+    messages=[                           <span class="c"># the conversation so far</span>
+        {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"Suggest a name for a tabby cat."</span>},
+    ],
+)
+
+print(msg.content[<span class="n">0</span>].text)              <span class="c"># → "How about Marmalade?"</span>
+    </pre>
+    <p class="note clay"><b>Java bridge:</b> if you did the Java/HTTP version, <code>client.messages.create(...)</code>
+    is exactly your <code>HttpClient.send(POST /v1/messages, body)</code> — the SDK is that POST, pre-written. The
+    <code>msg</code> object is the parsed JSON response.</p>
+  </div>
+
+  <h2>What you send vs what "the API" sees</h2>
+  <p>Toggle between the Python you write and the raw HTTP it becomes. Same request — the SDK is just filling out
+  the order slip for you:</p>
+  <div class="panel">
+    <div class="btnrow">
+      <button id="bpy">Python (what you write)</button>
+      <button id="bhttp" class="ghost">Raw HTTP (what's sent)</button>
+    </div>
+    <pre id="sendview"></pre>
+  </div>
+
+  <h2>The reply you get back</h2>
+  <p>The response is a JSON object (the SDK hands it to you as <code>msg</code>). You'll reach for four fields
+  constantly. Hover/click each field to see what it's for:</p>
+  <div class="panel">
+    <pre id="resp"></pre>
+    <div id="fieldbtns" class="btnrow"></div>
+    <p id="fieldinfo" class="note">Click a field above.</p>
+  </div>
+
+  <h2>The rule that trips everyone: it's stateless</h2>
+  <p>The API remembers <b>nothing</b> between calls — there is no conversation stored on the server. To have a
+  multi-turn chat, <em>you</em> keep the <code>messages</code> list and <b>resend the growing array</b> each turn,
+  appending Claude's last reply as an <code>assistant</code> message. Watch the notebook grow:</p>
+  <div class="panel">
+    <div class="btnrow">
+      <button id="turnbtn">+ Add the next turn</button>
+      <button id="turnreset" class="ghost">Reset</button>
+      <span class="muted small" id="turnlbl" style="margin-left:auto;"></span>
+    </div>
+    <pre id="convo"></pre>
+    <p id="convonote" class="note"></p>
+  </div>
+
+  <div class="note clay"><b>Exam traps &amp; gotchas:</b> the API is <b>stateless</b> — "Claude remembers our last
+  chat" is false unless you resend the messages (this is <em>why</em> long conversations fill the context window
+  in Domain 5). <code>system</code> is a <b>separate top-level parameter</b>, not a message with
+  <code>role:"system"</code>. Roles must <b>alternate</b> user → assistant → user. And you must set
+  <code>max_tokens</code> — it caps the reply, reserving output room in the window.</div>
+
+  <div class="note green"><b>Takeaways:</b> one call — <code>client.messages.create(...)</code> — is the whole
+  API. You pass a <b>model</b>, a top-level <b>system</b> prompt, an alternating <b>user/assistant messages</b>
+  list, and <b>max_tokens</b>. You get back a response object; grab the text at <code>content[0].text</code>,
+  check <code>stop_reason</code>, and read <code>usage</code> for token counts. It's <b>stateless</b> — you
+  resend the full history every turn. The SDK is just this HTTP call, pre-written.</div>
+
+  <p class="small muted">Next: <a href="parameters.html">the parameters that matter</a> — what each knob does and
+  when to turn it. Then <a href="reading-the-docs.html">how to read the API docs</a> so you can answer your own
+  questions. Practice it for real in the <a href="../../viewer.html?doc=practice/foundations-api.md">runnable Python exercises</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Prev: <a href="same-concepts-everywhere.html">← same concepts, different surface</a> · Next: <a href="parameters.html">parameters that matter →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+
+  // ---- send view toggle ----
+  const PY =
+`msg = client.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=300,
+    system="You are a concise, friendly assistant.",
+    messages=[
+        {"role": "user", "content": "Suggest a name for a tabby cat."},
+    ],
+)`;
+  const HTTP =
+`POST https://api.anthropic.com/v1/messages
+x-api-key: sk-ant-...
+anthropic-version: 2023-06-01
+content-type: application/json
+
+{
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 300,
+  "system": "You are a concise, friendly assistant.",
+  "messages": [
+    { "role": "user", "content": "Suggest a name for a tabby cat." }
+  ]
+}`;
+  function sw(py){ $('#sendview').textContent = py?PY:HTTP;
+    $('#bpy').className = py?'':'ghost'; $('#bhttp').className = py?'ghost':''; }
+  $('#bpy').addEventListener('click',()=>sw(true));
+  $('#bhttp').addEventListener('click',()=>sw(false));
+  sw(true);
+
+  // ---- response fields ----
+  $('#resp').textContent =
+`{
+  "id": "msg_01Xy...",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [ { "type": "text", "text": "How about Marmalade?" } ],
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 18, "output_tokens": 9 }
+}`;
+  const FIELDS = {
+    'content':'<b>content[0].text</b> — the actual reply. It\'s a <em>list of blocks</em> (usually one text block; with tools you also get <code>tool_use</code> blocks). In Python: <code>msg.content[0].text</code>.',
+    'stop_reason':'<b>stop_reason</b> — why Claude stopped. <code>end_turn</code> = finished naturally; <code>max_tokens</code> = you hit the length cap (reply is cut off — raise max_tokens); <code>tool_use</code> = it wants to call a tool (Domain 2); <code>stop_sequence</code> = it hit one of your stop strings.',
+    'usage':'<b>usage</b> — token counts for <em>this</em> call. You pay per token, so this is your meter. input_tokens grows every turn because you resend the whole history (statelessness has a price → Domain 5).',
+    'role':'<b>role: "assistant"</b> — the reply is Claude\'s turn. To continue the chat, you append this whole message onto your <code>messages</code> list and send again.',
+  };
+  const fb = $('#fieldbtns');
+  Object.keys(FIELDS).forEach((k,i)=>{ const b=el('button',{text:k,class:i?'ghost':''});
+    b.addEventListener('click',()=>{ Array.from(fb.children).forEach((x,j)=>x.className=j===i?'':'ghost');
+      $('#fieldinfo').innerHTML=FIELDS[k]; }); fb.appendChild(b); });
+  $('#fieldinfo').innerHTML = FIELDS['content'];
+
+  // ---- growing conversation ----
+  const TURNS = [
+    {role:'user', content:'Suggest a name for a tabby cat.'},
+    {role:'assistant', content:'How about "Marmalade"?'},
+    {role:'user', content:'Something shorter?'},
+    {role:'assistant', content:'Try "Moss" or "Pip".'},
+    {role:'user', content:'Pip it is — thanks!'},
+  ];
+  let n = 1;
+  function renderConvo(){
+    const shown = TURNS.slice(0,n);
+    const lines = shown.map(m=>`    { "role": "${m.role}", "content": "${m.content}" }`).join(',\n');
+    $('#convo').textContent = `messages = [\n${lines}\n]   # ← you resend this ENTIRE list every call`;
+    $('#turnlbl').textContent = n + ' / ' + TURNS.length + ' messages';
+    $('#turnbtn').disabled = n >= TURNS.length;
+    const lastRole = TURNS[n-1].role;
+    $('#convonote').className = 'note ' + (n>=TURNS.length?'green':'');
+    $('#convonote').innerHTML = n===1
+      ? 'One user message — your first request. Send it, and Claude\'s reply comes back as an <b>assistant</b> message…'
+      : (lastRole==='assistant'
+        ? '…which you <b>append</b> to the list. The array only ever grows — it\'s the agent\'s entire memory.'
+        : 'A new <b>user</b> turn. You resend <em>everything above it</em> so Claude has the full context — it kept none of it.');
+  }
+  $('#turnbtn').addEventListener('click',()=>{ if(n<TURNS.length){n++;renderConvo();} });
+  $('#turnreset').addEventListener('click',()=>{ n=1; renderConvo(); });
+  renderConvo();
+})();
+</script>
+</body>
+</html>

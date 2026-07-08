@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Same concepts, different surface — claude.ai, VS Code, and the raw API</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Start here</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations · Start here</span>
+    <h1>Same concepts, different surface</h1>
+    <p class="lede">You probably don't spend most of your day writing raw API calls — you chat on
+      <b>claude.ai</b>, or use Claude inside <b>VS Code</b> (via GitHub Copilot Chat, or the Claude Code
+      extension). Good news: <b>every concept you just learned still applies</b> — it's just hidden behind a
+      nicer interface. This page shows exactly where each one resurfaces, so the knowledge transfers instead of
+      staying "API-only trivia."</p>
+    <div class="tagrow">
+      <span class="tag key">claude.ai / Desktop</span><span class="tag key">VS Code + Copilot Chat</span>
+      <span class="tag key">VS Code + Claude Code</span><span class="tag">the raw API</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Think of the API as the <b>kitchen</b> where all the cooking really happens. <b>claude.ai</b> is a nice
+    restaurant with a menu and a waiter — the same kitchen, but you never see the stove. <b>VS Code</b> can seat
+    you at two different tables in that same restaurant: one run by GitHub (Copilot Chat, which can also cook
+    with Claude), and one that's Anthropic's own table (the Claude Code extension). Different tables, different
+    waiters, <b>same kitchen underneath.</b> Once you've seen the kitchen, you understand why the menu items
+    exist at all.
+  </div>
+
+  <h2>The big unlock: the UI <em>is</em> the harness</h2>
+  <p class="callout">Remember how the API is <b>stateless</b> and <em>you</em> had to resend the whole
+  <code>messages</code> list every turn? claude.ai and VS Code chat do that <b>for you</b>, invisibly. Every chat
+  product is just code that (a) keeps your message list, (b) calls <code>/v1/messages</code> with it, and
+  (c) appends the reply — exactly Exercise 7 from the <a href="../../viewer.html?doc=practice/foundations-api.md">hands-on
+  practice</a>, wrapped in a nice UI. That's <em>all</em> a chat app is.</p>
+
+  <h2>Pick a surface — see where each concept lives</h2>
+  <div class="panel">
+    <div class="btnrow" id="surfbtns"></div>
+    <table id="maptable"><tbody></tbody></table>
+    <p id="surfnote" class="note"></p>
+  </div>
+
+  <h2>Concept-by-concept, in plain terms</h2>
+  <table>
+    <tr><th>API concept</th><th>Where it hides in claude.ai</th><th>Where it hides in VS Code</th></tr>
+    <tr><td><code>system</code> prompt</td><td>"Custom instructions" (personal) &amp; a <b>Project's</b> instructions</td><td>Copilot: <code>.github/copilot-instructions.md</code>. Claude Code: <a href="../3-claude-code/claudemd-hierarchy.html"><code>CLAUDE.md</code></a></td></tr>
+    <tr><td><code>model</code></td><td>the model picker above the chat box (Sonnet/Opus/Haiku)</td><td>Copilot's model picker; Claude Code's <code>/model</code> or config</td></tr>
+    <tr><td>context window</td><td>"this chat is getting long" nudges; Project "knowledge" files eat into it too</td><td>same — long sessions get summarized/compacted (Domain 5) automatically</td></tr>
+    <tr><td><code>tool_use</code> / tools</td><td>"Connectors" (Drive, web search) and custom "Skills"</td><td>Copilot's agent-mode tools (edit files, run terminal); Claude Code's built-in tools + MCP</td></tr>
+    <tr><td>extended thinking</td><td>an explicit "Think" / extended-thinking toggle in chat</td><td>surfaced as a setting in some Copilot/Claude Code configs</td></tr>
+    <tr><td><code>temperature</code></td><td>hidden — the product picks a sane fixed value for you</td><td>hidden — same reason: consistency for a general chat product</td></tr>
+    <tr><td>prompt caching</td><td>invisible — the product may apply it for you behind the scenes</td><td>invisible in Copilot; Claude Code manages its own context/caching</td></tr>
+    <tr><td>statelessness</td><td>hidden — the product resends your history for you every message</td><td>hidden — same; that's the whole value of the wrapper</td></tr>
+  </table>
+
+  <div class="note clay"><b>Why this matters for the exam and for real work:</b> Domain 3 (Claude Code
+  Configuration) is testing the <b>Claude Code</b> column above — whether it's the CLI or the VS Code extension,
+  the underlying mechanics (CLAUDE.md hierarchy, hooks, skills, headless mode) are <em>identical</em>. And when
+  you're prompt-engineering inside claude.ai Projects or a Copilot instructions file, you are — without
+  realizing it — writing a <code>system</code> prompt. The skill you built in Domain 4 transfers directly; only
+  the text box you type it into changes.</div>
+
+  <div class="note green"><b>Takeaways:</b> claude.ai and VS Code integrations are <b>products built on the same
+  API</b> you've been learning — they just manage the bookkeeping (message history, model defaults, temperature)
+  for you. "Custom instructions" / "Project instructions" / <code>copilot-instructions.md</code> / <code>CLAUDE.md</code>
+  are all <b>system prompts</b> wearing different clothes. "Connectors"/"Skills" are productized <b>tool use</b>.
+  Learn the API once; recognize it everywhere.</div>
+
+  <p class="small muted">Now get your own key and run the raw calls yourself:
+  <a href="../../viewer.html?doc=reference/getting-started.md">Getting your API key →</a></p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Prev: <a href="what-is-the-api.html">← what is the API</a> · Next: <a href="messages-api.html">the Messages API →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$;
+  const SURFACES = {
+    claudeai: { label:'claude.ai / Desktop app', rows:[
+      ['You type a message', 'Product appends it to a hidden messages[] list'],
+      ['You pick "Opus" from a dropdown', 'model="claude-opus-4-8" is set for you'],
+      ['You write "Custom instructions" or Project instructions', 'Sent as the system parameter on every call'],
+      ['You attach files / turn on a Connector', 'Content is injected into context, or a tool is made available'],
+      ['Chat "feels" like it remembers', 'The whole history is silently resent — Exercise 6 & 7, hidden from you'],
+    ], note:'<b>claude.ai is the reference example of "the API, productized."</b> Every convenience feature maps to a parameter or technique you already know.' },
+    copilot: { label:'VS Code — GitHub Copilot Chat', rows:[
+      ['You open Copilot Chat and pick "Claude Sonnet"', 'Copilot\'s backend calls the Messages API with model set to that Claude version'],
+      ['A repo has .github/copilot-instructions.md', 'Its content is folded in as standing instructions — same JOB as system, different owner (GitHub\'s product, not a raw system param you control)'],
+      ['"Agent mode" edits files / runs the terminal', 'Conceptually tool_use — Copilot defines its own tools, same pattern as Domain 2'],
+      ['A very long chat gets summarized', 'Same context-window pressure as Domain 5 — Copilot compacts for you'],
+    ], note:'Copilot Chat is <b>not an Anthropic product</b> — but when you select a Claude model, the underlying call is the same Messages API you\'ve learned. The prompting skills (Domain 4) transfer 1:1; the config file names differ.' },
+    claudecode: { label:'VS Code — Claude Code extension', rows:[
+      ['You run/open Claude Code inside VS Code', 'It is the exact same Claude Code as the CLI — an app built on the API (see "what is the API")'],
+      ['Project has a CLAUDE.md', 'Read exactly per the hierarchy in Domain 3 — no difference from terminal use'],
+      ['Hooks / skills / rules configured', 'Identical mechanics to the CLI (Domain 3) — the extension is just a different window'],
+      ['It calls Read/Write/Bash/Grep/Glob, or an MCP server', 'The literal Domain 2 & 3 material — same tools, same protocol'],
+    ], note:'This one is the simplest: the VS Code extension <b>is</b> Claude Code. Everything you learned in Domain 3 applies with zero translation.' },
+    api: { label:'Raw API (what you built in practice/foundations-api.md)', rows:[
+      ['client.messages.create(model=..., ...)', 'You set every parameter explicitly — nothing is hidden'],
+      ['messages=[...]', 'You own the history; you decide what to resend'],
+      ['system="..."', 'You write the standing instructions directly'],
+      ['tools=[...]', 'You define the schema yourself (Domain 2)'],
+    ], note:'This is the <b>ground truth</b> — everything in the other three columns is a convenience layer over exactly this.' },
+  };
+  const btns = $('#surfbtns');
+  Object.keys(SURFACES).forEach((k,i)=>{ const b=el('button',{text:SURFACES[k].label,class:i?'ghost':''});
+    b.addEventListener('click',()=>show(k)); btns.appendChild(b); });
+  function show(key){
+    Array.from(btns.children).forEach((b,i)=> b.className = Object.keys(SURFACES)[i]===key ? '' : 'ghost');
+    const s = SURFACES[key];
+    const tbody = $('#maptable tbody'); tbody.innerHTML='';
+    tbody.appendChild(el('tr',{},[el('th',{text:'What you do / see'}),el('th',{text:'What\'s really happening (API terms)'})]));
+    s.rows.forEach(([a,b])=> tbody.appendChild(el('tr',{},[el('td',{text:a}),el('td',{text:b})])));
+    $('#surfnote').className='note green'; $('#surfnote').innerHTML=s.note;
+  }
+  show('claudeai');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt caching — stop paying to re-read the same thing</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 5 · Context & Reliability (15%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 5 · Context Management &amp; Reliability</span>
+    <h1>Prompt caching</h1>
+    <p class="lede">If every request re-sends the same big system prompt, tool list, or document, you pay full
+      price to process those tokens <em>every single time</em>. <b>Prompt caching</b> lets Claude remember a
+      <b>prefix</b> it already processed and reuse it at a fraction of the cost and latency. Toggle caching and
+      watch the bill — and the clock — drop.</p>
+    <div class="tagrow">
+      <span class="tag key">cache_control</span><span class="tag key">prefix reuse</span>
+      <span class="tag">cache write vs read</span><span class="tag">latency</span>
+      <span class="tag">stable prefix first</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine telling a long bedtime story every night, but you always start with the same boring 10-minute intro
+    before the new part. Wouldn't it be nice to <b>bookmark the intro</b> so you skip straight to "…and then,
+    tonight's new adventure"? Prompt caching is that bookmark. Claude remembers the part that never changes and
+    only does fresh work on the new bit — faster, and way cheaper.
+  </div>
+
+  <h2>Compare the bill: cache off vs on</h2>
+  <p>You're answering 20 questions about the same 50-page contract. Without caching, all those contract tokens
+  are reprocessed on every question. With caching, the first call <em>writes</em> the cache (a small premium),
+  and the next 19 <em>read</em> it cheaply. Move the slider:</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>cached prefix size <span class="val"></span></label><input id="pre" type="range" min="2" max="100" value="50"></div>
+      <div class="ctrl"><label># of requests reusing it <span class="val"></span></label><input id="reqs" type="range" min="1" max="40" value="20"></div>
+    </div>
+    <div class="barrow"><span class="lbl">no cache</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="b1" class="bar" style="background:var(--red);"></div></div><span class="num" id="c1"></span></div>
+    <div class="barrow"><span class="lbl">with cache</span><div style="background:var(--light);border-radius:4px;overflow:hidden;"><div id="b2" class="bar" style="background:var(--green);"></div></div><span class="num" id="c2"></span></div>
+    <p id="note" class="note green"></p>
+  </div>
+
+  <h2>The rules that make it work</h2>
+  <ul>
+    <li><b>Put stable stuff first.</b> The cache works on a <em>prefix</em>: system prompt → tools → big docs →
+      <em>then</em> the changing user turn. Anything before your <code>cache_control</code> breakpoint must be
+      byte-identical across calls, or the cache misses.</li>
+    <li><b>Write once, read many.</b> The first call pays a small <b>write</b> premium (~125% of base);
+      subsequent reads are deeply discounted (~10% of base). The break-even is usually just 2+ reuses.</li>
+    <li><b>Mind the TTL.</b> Cache entries expire (default ~5 minutes, refreshed on use). High-frequency traffic
+      benefits most; rare calls may let it lapse.</li>
+    <li><b>Don't cache the volatile part.</b> Caching the changing user question gains nothing — only cache the
+      repeated prefix.</li>
+  </ul>
+
+  <div class="note clay"><b>Exam trap:</b> caching only helps when a <b>large, identical prefix</b> repeats and
+  comes <b>first</b>. Ordering volatile content before stable content (so the prefix changes each call) is the
+  classic mistake — every call misses. And caching tiny or one-off prompts wastes the write premium. Cache the
+  <b>big, stable, reused</b> head; keep the variable tail outside the breakpoint.</div>
+
+  <div class="note green"><b>Takeaways:</b> prompt caching reuses an already-processed <b>prefix</b> to cut cost
+  and latency. Order <b>stable content first</b> (system → tools → docs) and mark the breakpoint with
+  <code>cache_control</code>; the variable user turn goes last. First call <b>writes</b> (small premium), later
+  calls <b>read</b> cheaply — worth it from ~2 reuses, within the cache TTL.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching" target="_blank" rel="noopener">Anthropic — Prompt caching</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 5.
+    Next: <a href="compaction.html">compaction & memory →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$, slider = Ill.slider;
+  slider($('#pre'), v=>v+'k tok', render);
+  slider($('#reqs'), v=>v+' calls', render);
+  function render(){
+    const pre=+$('#pre').value, reqs=+$('#reqs').value, varTok=4; // changing part ~4k
+    // base cost units = tokens (1 per k). cache write 1.25x, read 0.1x.
+    const noCache = reqs * (pre + varTok);
+    const withCache = (1.25*pre + varTok) /*first*/ + (reqs-1)*(0.10*pre + varTok);
+    const max = Math.max(noCache, withCache);
+    $('#b1').style.width = (noCache/max*100)+'%';
+    $('#b2').style.width = (withCache/max*100)+'%';
+    $('#c1').textContent = Math.round(noCache)+'u';
+    $('#c2').textContent = Math.round(withCache)+'u';
+    const saved = Math.round((1-withCache/noCache)*100);
+    $('#note').innerHTML = '💰 <b>~'+saved+'% cheaper</b> across '+reqs+' calls (and the cached reads are also much <b>faster</b>, since the prefix isn\'t reprocessed). The bigger the stable prefix and the more reuses, the larger the win.';
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-agent orchestration — hub, workers & context passing</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 1 · Agentic Architecture (27%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 1 · Agentic Architecture</span>
+    <h1>Multi-agent orchestration</h1>
+    <p class="lede">When one agent can't hold the whole job in its head, you split it: a <b>lead</b> agent
+      (the hub) breaks the task into pieces and spawns <b>subagents</b> (the spokes), each with its <em>own</em>
+      fresh context window. The hard parts aren't the agents — they're <b>context passing</b>, <b>partial
+      failures</b>, and <b>provenance</b>. This is exactly the "Multi-Agent Research System" exam scenario.</p>
+    <div class="tagrow">
+      <span class="tag key">hub-and-spoke</span><span class="tag key">subagents</span>
+      <span class="tag">context isolation</span><span class="tag">partial failure</span>
+      <span class="tag">provenance</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    A teacher (the <b>lead</b>) gives a big group project to four students (the <b>subagents</b>): one finds
+    facts, one checks them, one organises, one writes it up. Each student has their <b>own notebook</b> — they
+    don't share a brain. The teacher hands each one just the part they need, collects the pieces, and staples
+    them together. If one student loses their notebook, the teacher must notice and ask someone else — not
+    pretend the missing page is fine.
+  </div>
+
+  <h2>Why split at all? Context isolation</h2>
+  <p>A single agent doing deep research would fill its context window with raw search results long before it
+  finished — and once the window is full, quality collapses. The fix: give each subagent a <b>clean window</b>
+  for its narrow slice, and have it return only a <b>compressed summary</b> to the lead. The lead never sees the
+  raw firehose; it sees five tidy reports. This is the real reason multi-agent beats one-big-agent for broad
+  tasks — not "more brains," but <b>more context budget</b> spent in parallel.</p>
+
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>worker C hits an error…</label>
+      <select id="mode"><option value="ok">all workers succeed</option>
+      <option value="fail">worker C fails (search timeout)</option></select></div>
+    <svg id="diagram" viewBox="0 0 600 280" role="img" aria-label="orchestration diagram"></svg>
+    <p id="explain" class="note" style="margin-top:6px;"></p>
+  </div>
+
+  <h2>The three things that actually break</h2>
+  <table>
+    <tr><th>Hazard</th><th>What goes wrong</th><th>Architect's answer</th></tr>
+    <tr><td><b>Context passing</b></td><td>Lead dumps its entire history into every subagent → wasted tokens, confusion.</td><td>Pass each subagent <em>only</em> its task + the minimal context it needs. Isolation is the feature.</td></tr>
+    <tr><td><b>Partial failure</b></td><td>One subagent times out; the lead synthesises anyway and silently ships a gap.</td><td>Detect missing results, retry or degrade <em>explicitly</em>, and tell the user what's incomplete.</td></tr>
+    <tr><td><b>Provenance</b></td><td>Final answer merges five sources; nobody can trace which claim came from where.</td><td>Carry source IDs through synthesis so every claim is attributable. Critical for trust + audits.</td></tr>
+  </table>
+
+  <div class="note clay"><b>Exam trap:</b> "more agents = better" is wrong. Multi-agent adds coordination cost,
+  latency, and failure modes. Reach for it when the task is <b>broad and parallelisable</b> (research, "touch
+  every file"), <em>not</em> for a linear task a chain handles. And a lead that ignores a failed subagent is the
+  classic wrong answer — reliable synthesis must account for <b>every</b> spoke, including the ones that died.</div>
+
+  <div class="note green"><b>Takeaways:</b> multi-agent = a <b>lead/orchestrator</b> spawning <b>subagents</b>,
+  each with an <b>isolated context window</b> that returns a <b>compressed summary</b>. You split for
+  <b>context budget</b>, not brain count. The three exam hazards: pass <b>minimal context</b>, handle
+  <b>partial failures explicitly</b>, and preserve <b>provenance</b> through synthesis. Use it only for broad,
+  parallel work.</div>
+
+  <p class="small muted">Curated companion: <a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 1.
+    Next: <a href="guardrails.html">loop control & guardrails →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const el = Ill.el, $ = Ill.$, box = Ill.box, arrow = Ill.arrow;
+  const C = { lead:['#fbeee8','#b35a3f'], w:['#e7f3ec','#3d8a5f'], bad:['#fbe6e0','#bf4d3a'], syn:['#fdf4e7','#c08a2e'] };
+  const workers = [['search','A',60],['analyze','B',200],['verify','C',340],['write','D',480]];
+
+  function render() {
+    const fail = $('#mode').value === 'fail';
+    const svg = $('#diagram'); svg.innerHTML = '';
+    const lead = box(svg, 300, 44, 200, 40, ['Lead agent (orchestrator)'], ...C.lead);
+    // workers
+    workers.forEach(([name,id,x]) => {
+      const isC = id === 'C', bad = fail && isC;
+      const wb = box(svg, x, 150, 120, 56, [name+' subagent', bad ? '✗ timed out' : '✓ own context'], ...(bad?C.bad:C.w));
+      arrow(svg, lead.x + (x-300)*0.32, lead.y+lead.h/2, wb.x, wb.y-wb.h/2, bad?'var(--red)':'var(--green)', '');
+      if (!bad) arrow(svg, wb.x, wb.y+wb.h/2, 300 + (x-300)*0.32, 232-20, 'var(--amber)', '');
+    });
+    const syn = box(svg, 300, 248, 230, 40, [fail ? 'Synthesize — flag missing «verify»' : 'Synthesize all four reports'], ...(fail?C.bad:C.syn));
+    $('#explain').innerHTML = fail
+      ? '<b>Partial failure path:</b> worker C never returned. A naïve lead would staple A+B+D and ship a confident but <em>unverified</em> answer. The certified design: <b>detect</b> the gap, <b>retry</b> C (or fall back), and if still missing, <b>tell the user</b> "claims are unverified" rather than hiding it. Reliability = accounting for every spoke.'
+      : '<b>Happy path:</b> the lead split the research into four narrow tasks. Each subagent worked in its <b>own fresh context window</b> and returned a <b>compact summary</b>. The lead synthesised the four reports — carrying <b>source IDs</b> through so every claim stays traceable.';
+  }
+  $('#mode').addEventListener('change', render); render();
+})();
+</script>
+</body>
+</html>

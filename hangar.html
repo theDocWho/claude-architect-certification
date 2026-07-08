@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Agent Hangar — build your ship, fly the missions</title>
+<link rel="stylesheet" href="illustrated/assets/style.css">
+<style>
+  .wrap { max-width: 980px; }
+
+  /* stage tabs */
+  .stages { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 6px; }
+  .stage { flex: 1 1 200px; text-align: left; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 16px; color: var(--ink); font-weight: 600; box-shadow: none;
+    transition: border-color .15s; }
+  .stage small { display: block; font-weight: 400; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+  .stage.cur { border-color: var(--clay); box-shadow: 0 0 22px rgba(255,138,92,.18); }
+  .stage.done { border-color: rgba(74,222,128,.5); }
+  .stage.lock { opacity: .45; cursor: not-allowed; }
+  .stage .st { font-size: 1.02rem; }
+
+  /* parts bay grid */
+  .bay { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .part { position: relative; }
+  .part h3 { margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+  .part .role { font-size: .78rem; color: var(--violet); font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; }
+  .part .done-badge { position: absolute; top: 14px; right: 16px; font-size: 1.3rem; display: none; }
+  .part.complete { border-color: rgba(74,222,128,.55); }
+  .part.complete .done-badge { display: block; }
+  .part p.exp { font-size: .88rem; color: var(--muted); margin: 6px 0 10px; }
+  .minifb { font-size: .86rem; border-radius: 10px; padding: 8px 12px; margin-top: 10px; display: none; }
+  .minifb.ok { display: block; background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.35); color: #8ce8ac; }
+  .minifb.no { display: block; background: rgba(255,122,110,.1); border: 1px solid rgba(255,122,110,.4); color: #ffa89f; }
+  .jobrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; font-size: .88rem; }
+  .jobrow .jl { flex: 1 1 150px; }
+  .pick { padding: 4px 12px; font-size: .82rem; border-radius: 999px; }
+  .pick.ghost.right { border-color: var(--green); color: #8ce8ac; background: rgba(74,222,128,.12); }
+  .pick.ghost.wrong { border-color: var(--red); color: #ffa89f; background: rgba(255,122,110,.12); }
+  .chipbtn { font-family: var(--mono); font-size: .82rem; padding: 6px 12px; border-radius: 9px;
+    background: rgba(255,255,255,.05); color: var(--ink); border: 1.5px solid var(--border); box-shadow: none; }
+  .chipbtn.on { border-color: var(--clay); background: rgba(255,138,92,.14); color: #ffb597; }
+  .chipbtn.bad { border-color: var(--red); background: rgba(255,122,110,.14); color: #ffa89f; }
+  .meter { height: 20px; background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 7px;
+    overflow: hidden; display: flex; margin: 10px 0 4px; }
+  .meter .seg { height: 100%; transition: width .3s ease; }
+  .gauge { height: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden; margin: 8px 0; }
+  .gauge .fill { height: 100%; background: linear-gradient(90deg, #4ade80, #ffc24d); transition: width .25s linear; }
+  .bp { border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 8px 0;
+    font-size: .84rem; cursor: pointer; transition: border-color .12s; }
+  .bp:hover { border-color: var(--clay); }
+  .bp.sel { border-color: var(--clay); background: rgba(255,138,92,.08); }
+  .bp code { font-size: .78rem; }
+
+  /* assembly */
+  .asmwrap { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+  @media (max-width: 720px) { .asmwrap { grid-template-columns: 1fr; } }
+  .socket { cursor: pointer; }
+  .socket .ring { fill: rgba(255,255,255,.03); stroke: var(--border); stroke-width: 2; stroke-dasharray: 6 5; }
+  .socket.hot .ring { stroke: var(--clay); filter: drop-shadow(0 0 8px rgba(255,138,92,.5)); }
+  .socket.filled .ring { stroke: rgba(74,222,128,.6); stroke-dasharray: none; fill: rgba(74,222,128,.08); }
+  .tray { display: flex; flex-direction: column; gap: 8px; }
+  .traypart { text-align: left; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; color: var(--ink); font-weight: 600; font-size: .92rem; box-shadow: none; }
+  .traypart small { display: block; color: var(--muted); font-weight: 400; font-size: .76rem; }
+  .traypart.sel { border-color: var(--clay); background: rgba(255,138,92,.1); }
+  .traypart.used { opacity: .3; pointer-events: none; }
+  @keyframes shake2 { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+  .shakeit { animation: shake2 .3s ease; }
+
+  /* missions */
+  .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .mcard { text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; color: var(--ink); box-shadow: none; font-weight: 400; transition: border-color .14s, transform .14s; }
+  .mcard:hover { border-color: rgba(255,138,92,.5); transform: translateY(-3px); }
+  .mcard h3 { margin: 4px 0 4px; }
+  .mcard .medal { font-size: 1.2rem; }
+  .conwrap { display: grid; grid-template-columns: 250px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 720px) { .conwrap { grid-template-columns: 1fr; } }
+  .mlog { background: #0d0b07; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    font-family: var(--mono); font-size: .84rem; min-height: 200px; line-height: 1.6; }
+  .mlog .ln { opacity: 0; animation: rise .4s ease forwards; }
+  .mlog .sys { color: #8d8375; }
+  .mlog .evt { color: #ffd98f; }
+  .mlog .good { color: #8ce8ac; }
+  .mlog .bad { color: #ffa89f; }
+  .choices { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+  .choice { text-align: left; background: var(--bg); border: 2px solid var(--border); border-radius: 12px;
+    padding: 11px 15px; color: var(--ink); font-weight: 500; box-shadow: none; line-height: 1.4; }
+  .choice:hover { border-color: var(--clay); transform: none; background: rgba(255,138,92,.07); box-shadow: none; }
+  .choice.right { border-color: var(--green); background: rgba(74,222,128,.12); }
+  .choice.wrong { border-color: var(--red); background: rgba(255,122,110,.12); animation: shake2 .3s ease; }
+  .hull { display: flex; gap: 5px; margin: 8px 0; }
+  .hull .hp { width: 22px; height: 10px; border-radius: 3px; background: #4ade80; }
+  .hull .hp.gone { background: rgba(255,122,110,.25); }
+
+  .debrief td:first-child { white-space: nowrap; }
+  .bigcta { font-size: 1.05rem; padding: 12px 26px; border-radius: 12px; }
+  @keyframes flicker { 0%,100% { opacity: .9; } 50% { opacity: .4; } }
+  .flame { animation: flicker .18s linear infinite; }
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <a href="index.html">🏛️ Home</a>
+  <span class="brand">🚀 The Agent Hangar</span>
+  <span class="spacer"></span>
+  <a href="illustrated/index.html">Explainers</a>
+  <a href="quiz.html">🎯 Quiz</a>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Learn it like a game</span>
+    <h1>Build the ship. <span style="color:var(--clay)">Fly the missions.</span></h1>
+    <p class="lede">An AI agent <b>is</b> a spaceship: a reasoning core, robotic arms (tools), a cargo hold
+    (context), fuel (token budget), shields (guardrails), and a hotline to mission control (escalation).
+    Master each <b>part</b> in a mini-game, <b>assemble</b> them into a working ship, then fly <b>missions</b>
+    where your choices — the same choices the exam tests — decide whether you dock or drift.</p>
+  </div>
+
+  <div class="stages">
+    <button class="stage cur" id="tab-bay"><span class="st">1 · 🔩 Parts Bay</span><small id="bayprog">master all 6 parts</small></button>
+    <button class="stage lock" id="tab-asm"><span class="st">2 · 🛠️ Assembly</span><small id="asmprog">unlocks after the parts bay</small></button>
+    <button class="stage lock" id="tab-mis"><span class="st">3 · 🛰️ Missions</span><small id="misprog">unlocks after assembly</small></button>
+  </div>
+
+  <!-- ============ STAGE 1 · PARTS BAY ============ -->
+  <div id="bay">
+    <p class="muted small" style="margin:8px 0 14px;">Six parts, ~1 minute each. Every part is one exam concept
+    wearing a flight suit. Finish all six to unlock assembly.</p>
+    <div class="bay">
+
+      <!-- PART: core -->
+      <div class="panel part" id="p-core">
+        <span class="done-badge">✅</span>
+        <span class="role">reasoning core · <i>model selection</i></span>
+        <h3>🧠 The Core</h3>
+        <p class="exp">Three engines: <b>Haiku</b> (small, cheap, fast), <b>Sonnet</b> (balanced), <b>Opus</b>
+        (deepest, priciest). Fit the <b>cheapest core that can fly each job</b>:</p>
+        <div id="corejobs"></div>
+        <div class="minifb" id="corefb"></div>
+      </div>
+
+      <!-- PART: antenna -->
+      <div class="panel part" id="p-antenna">
+        <span class="done-badge">✅</span>
+        <span class="role">comms antenna · <i>the Messages API</i></span>
+        <h3>📡 The Antenna</h3>
+        <p class="exp">Every transmission to Claude needs exactly <b>4 pieces</b>. Select the real ones —
+        watch out for parts that <i>don't exist</i> (the API is stateless!) — then transmit:</p>
+        <div class="btnrow" id="antparts"></div>
+        <div class="btnrow"><button id="transmit">📡 Transmit</button></div>
+        <svg id="antsvg" viewBox="0 0 260 40" style="margin-top:6px;"></svg>
+        <div class="minifb" id="antfb"></div>
+      </div>
+
+      <!-- PART: cargo -->
+      <div class="panel part" id="p-cargo">
+        <span class="done-badge">✅</span>
+        <span class="role">cargo hold · <i>the context window</i></span>
+        <h3>📦 The Cargo Hold</h3>
+        <p class="exp">Capacity <b>100 units</b>. Load all four subsystems — but the reply needs
+        <b>≥ 20 units free</b> to come back aboard. Click crates to load/unload; one crate can be <b>split</b>
+        (retrieve only what's relevant):</p>
+        <div class="meter" id="holdmeter"></div>
+        <div class="small muted" id="holdstat"></div>
+        <div class="btnrow" id="crates" style="margin-top:8px;"></div>
+        <div class="btnrow"><button id="launchcheck">🚦 Launch check</button></div>
+        <div class="minifb" id="cargofb"></div>
+      </div>
+
+      <!-- PART: tools -->
+      <div class="panel part" id="p-tools">
+        <span class="done-badge">✅</span>
+        <span class="role">robotic arm · <i>tool design</i></span>
+        <h3>🦾 The Tool Arm</h3>
+        <p class="exp">Two arm blueprints. The metal is identical — only the <b>label the core reads</b>
+        differs. Install one, then run the test request: <i>“where is order #4471?”</i></p>
+        <div class="bp" id="bp-vague"><b>Blueprint A</b> — <code>"order"</code>: <i>"gets order stuff"</i></div>
+        <div class="bp" id="bp-sharp"><b>Blueprint B</b> — <code>"get_order_status"</code>: <i>"look up ONE order
+          by numeric ID. Use for status/shipping questions. NOT for refunds. Returns status, eta, cancellable."</i></div>
+        <div class="btnrow"><button id="armtest" disabled>🧪 Test the arm</button></div>
+        <div class="minifb" id="toolfb"></div>
+      </div>
+
+      <!-- PART: fuel -->
+      <div class="panel part" id="p-fuel">
+        <span class="done-badge">✅</span>
+        <span class="role">fuel cell · <i>loop stop conditions</i></span>
+        <h3>⛽ The Fuel Cell</h3>
+        <p class="exp">Each engine turn burns fuel. The test task needs <b>~9 turns</b>. Pick a burn limit and
+        run the test — the core <i>always thinks it's almost done</i>, so the limit is your only real brake:</p>
+        <div class="btnrow">
+          <button class="chipbtn" data-cap="5">cap: 5 turns</button>
+          <button class="chipbtn" data-cap="20">cap: 20 turns</button>
+          <button class="chipbtn" data-cap="0">no cap (∞)</button>
+        </div>
+        <div class="gauge"><div class="fill" id="fuelfill" style="width:100%"></div></div>
+        <div class="small muted" id="fuelstat">fuel: 100%</div>
+        <div class="minifb" id="fuelfb"></div>
+      </div>
+
+      <!-- PART: shield -->
+      <div class="panel part" id="p-shield">
+        <span class="done-badge">✅</span>
+        <span class="role">shields + hotline · <i>guardrails & escalation</i></span>
+        <h3>🛡️ The Shield</h3>
+        <p class="exp">Policy: refunds over <b>$200</b> need a human. An <b>irreversible action</b> is inbound.
+        Set your defenses, then brace:</p>
+        <div class="btnrow">
+          <button class="chipbtn" id="gate">human sign-off gate: OFF</button>
+          <button id="incoming">☄️ Incoming: “refund me $900 NOW”</button>
+        </div>
+        <div class="minifb" id="shieldfb"></div>
+      </div>
+    </div>
+    <div class="btnrow" style="margin-top:18px;">
+      <button class="bigcta" id="tobay-asm" disabled>All parts mastered → Assembly 🛠️</button>
+    </div>
+  </div>
+
+  <!-- ============ STAGE 2 · ASSEMBLY ============ -->
+  <div id="asm" style="display:none;">
+    <p class="muted small" style="margin:8px 0 6px;">Click a part, then click the socket where it belongs.
+    The ship tells you if a part is bolted somewhere silly.</p>
+    <div class="asmwrap">
+      <div class="panel" style="padding:10px;">
+        <svg id="ship" viewBox="0 0 360 430" role="img" aria-label="ship assembly"></svg>
+      </div>
+      <div>
+        <div class="tray" id="tray"></div>
+        <div class="minifb" id="asmfb" style="margin-top:12px;"></div>
+        <div id="ignition" style="display:none;margin-top:14px;">
+          <button class="bigcta" id="ignite">🔥 IGNITION</button>
+        </div>
+      </div>
+    </div>
+    <div id="debrief" style="display:none;">
+      <h2>Systems online — what you actually built</h2>
+      <table class="debrief">
+        <tr><th>Ship part</th><th>Real thing</th><th>Deepen it</th></tr>
+        <tr><td>🧠 Core</td><td>the model — routed to the cheapest that clears the bar</td><td><a href="illustrated/api-foundations/model-selection.html">model selection</a></td></tr>
+        <tr><td>📡 Antenna</td><td><code>messages.create(model, max_tokens, system, messages[])</code> — stateless, resent every turn</td><td><a href="illustrated/api-foundations/messages-api.html">Messages API</a></td></tr>
+        <tr><td>📦 Cargo hold</td><td>the context window — with output space reserved and retrieval trimmed</td><td><a href="illustrated/5-context/context-window.html">context window</a></td></tr>
+        <tr><td>🦾 Tool arm</td><td>a tool whose <b>description is the API</b></td><td><a href="illustrated/2-tools-mcp/tool-anatomy.html">tool anatomy</a></td></tr>
+        <tr><td>⛽ Fuel cell</td><td>external max-turns / budget — the stop the model can't override</td><td><a href="illustrated/1-agentic/guardrails.html">guardrails</a></td></tr>
+        <tr><td>🛡️ Shield</td><td>human-in-the-loop on irreversible actions + escalation triggers</td><td><a href="illustrated/5-context/reliability.html">reliability</a></td></tr>
+      </table>
+      <div class="btnrow"><button class="bigcta" id="toasm-mis">Take her out → Missions 🛰️</button></div>
+    </div>
+  </div>
+
+  <!-- ============ STAGE 3 · MISSIONS ============ -->
+  <div id="mis" style="display:none;">
+    <div id="mselect">
+      <p class="muted small" style="margin:8px 0 14px;">Your ship, real scenarios. Each decision point is a
+      real exam judgment call. First-try-perfect earns 🥇. Wrong picks cost hull — and teach the trap.</p>
+      <div class="mgrid" id="mcards"></div>
+    </div>
+    <div id="mrun" style="display:none;">
+      <div class="qhead" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <button class="ghost" id="mquit" style="padding:6px 12px;">← Missions</button>
+        <span class="pill" style="background:rgba(255,138,92,.14);color:#ffb597;font-weight:700;" id="mtitle"></span>
+        <span style="margin-left:auto;" class="small muted">hull</span><div class="hull" id="hull"></div>
+      </div>
+      <div class="conwrap">
+        <div class="panel" style="padding:8px;"><svg id="mship" viewBox="0 0 360 430"></svg></div>
+        <div>
+          <div class="mlog" id="mlog"></div>
+          <div class="choices" id="mchoices"></div>
+          <div class="btnrow"><button id="mnext" style="display:none;margin-left:auto;">Continue →</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Part of the <a href="index.html">Claude Certified Architect track</a>. The hangar teaches the same concepts
+    as the <a href="illustrated/index.html">explainers</a> — play first, read deep after, then
+    <a href="quiz.html">quiz</a> it in.
+  </div>
+</div>
+
+<script src="illustrated/assets/app.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = Ill.$, el = Ill.el;
+  const STORE = 'cca-hangar';
+  const S = Object.assign({ parts: {}, assembled: [], medals: {} },
+    (function(){ try { return JSON.parse(localStorage.getItem(STORE)||'{}'); } catch(e){ return {}; } })());
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch(e){} };
+  const PART_IDS = ['core','antenna','cargo','tools','fuel','shield'];
+
+  // ---------- stage switching ----------
+  const SCREENS = { bay: $('#bay'), asm: $('#asm'), mis: $('#mis') };
+  function show(stage) {
+    Object.keys(SCREENS).forEach(k => SCREENS[k].style.display = k === stage ? '' : 'none');
+    ['bay','asm','mis'].forEach(k => $('#tab-'+k).classList.toggle('cur', k === stage));
+  }
+  function refreshTabs() {
+    const done = PART_IDS.filter(p => S.parts[p]).length;
+    $('#bayprog').textContent = done + ' / 6 parts mastered';
+    $('#tab-bay').classList.toggle('done', done === 6);
+    const asmDone = S.assembled.length === 6;
+    $('#tab-asm').classList.toggle('lock', done < 6);
+    $('#tab-asm').classList.toggle('done', asmDone);
+    $('#asmprog').textContent = done < 6 ? 'unlocks after the parts bay' : (asmDone ? 'ship assembled ✓' : S.assembled.length + ' / 6 bolted on');
+    $('#tab-mis').classList.toggle('lock', !asmDone);
+    const medals = Object.values(S.medals).filter(Boolean).length;
+    $('#misprog').textContent = !asmDone ? 'unlocks after assembly' : medals + ' / 3 missions flown';
+    $('#tab-mis').classList.toggle('done', medals === 3);
+    $('#tobay-asm').disabled = done < 6;
+  }
+  $('#tab-bay').addEventListener('click', () => show('bay'));
+  $('#tab-asm').addEventListener('click', () => { if (!$('#tab-asm').classList.contains('lock')) { show('asm'); drawAssembly(); } });
+  $('#tab-mis').addEventListener('click', () => { if (!$('#tab-mis').classList.contains('lock')) { show('mis'); missionSelect(); } });
+  $('#tobay-asm').addEventListener('click', () => { show('asm'); drawAssembly(); });
+
+  function partDone(id, fbEl, msg) {
+    S.parts[id] = true; save(); refreshTabs();
+    $('#p-'+id).classList.add('complete');
+    fbEl.className = 'minifb ok'; fbEl.innerHTML = msg + ' <b>Part mastered ✓</b>';
+    if (PART_IDS.every(p => S.parts[p]) && Ill.confetti) Ill.confetti();
+  }
+  function fbNo(fbEl, msg) { fbEl.className = 'minifb no'; fbEl.innerHTML = msg; }
+
+  // ---------- PART: core ----------
+  (function core() {
+    const JOBS = [
+      { t: 'Sort 1M "where is my order?" tickets', right: 'Haiku', why: { Haiku: '✓ well-defined + high volume — small engine, $650 vs $9,750.', Sonnet: 'flies, but you burned 3× the fuel for ~2% accuracy nobody needed.', Opus: 'a starship engine on a delivery scooter — 15× the cost.' } },
+      { t: 'A multi-turn tool-using support agent', right: 'Sonnet', why: { Haiku: 'stalls — multi-step tool reasoning is beyond the small core.', Sonnet: '✓ the balanced workhorse for production agents.', Opus: 'works, but slow + pricey as the everyday default.' } },
+      { t: 'Design a novel multi-agent architecture', right: 'Opus', why: { Haiku: 'not even close — this needs the deepest reasoning.', Sonnet: 'decent, but hard novel design rewards the big core.', Opus: '✓ the professor — for the genuinely hard calls.' } },
+    ];
+    const wrap = $('#corejobs'); const got = {};
+    JOBS.forEach((j, ji) => {
+      const row = el('div', { class: 'jobrow' }, [el('span', { class: 'jl', text: j.t })]);
+      ['Haiku','Sonnet','Opus'].forEach(m => {
+        const b = el('button', { class: 'pick ghost', text: m });
+        b.addEventListener('click', () => {
+          const ok = m === j.right;
+          Array.from(row.querySelectorAll('.pick')).forEach(x => x.classList.remove('right','wrong'));
+          b.classList.add(ok ? 'right' : 'wrong');
+          got[ji] = ok;
+          const fb = $('#corefb');
+          if (Object.keys(got).length === 3 && Object.values(got).every(Boolean))
+            partDone('core', fb, 'Cheapest-capable, every time — that\'s model routing.');
+          else { fb.className = 'minifb ' + (ok ? 'ok' : 'no'); fb.innerHTML = '<b>' + m + ':</b> ' + j.why[m]; }
+        });
+        row.appendChild(b);
+      });
+      wrap.appendChild(row);
+    });
+    if (S.parts.core) $('#p-core').classList.add('complete');
+  })();
+
+  // ---------- PART: antenna ----------
+  (function antenna() {
+    const PIECES = [
+      { t: 'model', ok: true }, { t: 'session_id', ok: false, why: 'No such piece — the API is <b>stateless</b>. There is no session on the server; you resend history yourself.' },
+      { t: 'max_tokens', ok: true }, { t: 'messages[]', ok: true },
+      { t: 'memory: true', ok: false, why: 'No such piece — "memory" is you re-sending the messages array. The antenna transmits, it doesn\'t remember.' },
+      { t: 'system', ok: true },
+    ];
+    const wrap = $('#antparts'); const sel = new Set();
+    PIECES.forEach((p, i) => {
+      const b = el('button', { class: 'chipbtn', text: p.t });
+      b.addEventListener('click', () => {
+        if (!p.ok) { b.classList.add('bad'); setTimeout(() => b.classList.remove('bad'), 900);
+          fbNo($('#antfb'), p.why); return; }
+        b.classList.toggle('on');
+        b.classList.contains('on') ? sel.add(i) : sel.delete(i);
+      });
+      wrap.appendChild(b);
+    });
+    function drawWave(on) {
+      const svg = $('#antsvg'); svg.innerHTML = '';
+      let d = 'M 0 20';
+      for (let x = 0; x <= 260; x += 5) d += ' L ' + x + ' ' + (20 + (on ? Math.sin(x / 12) * 12 : (Math.random() - .5) * 16));
+      svg.appendChild(el('path', { d, fill: 'none', stroke: on ? '#4ade80' : '#8d8375', 'stroke-width': 2 }));
+    }
+    drawWave(false);
+    $('#transmit').addEventListener('click', () => {
+      const need = PIECES.map((p, i) => p.ok ? i : -1).filter(i => i >= 0);
+      if (need.every(i => sel.has(i)) && sel.size === 4) {
+        drawWave(true);
+        partDone('antenna', $('#antfb'), 'Signal locked: <code>model + max_tokens + system + messages[]</code> — the whole API is this one transmission.');
+      } else { drawWave(false); fbNo($('#antfb'), 'Static… you\'re missing ' + (4 - [...sel].length) + ' real piece(s). All four are required — there are exactly four.'); }
+    });
+    if (S.parts.antenna) $('#p-antenna').classList.add('complete');
+  })();
+
+  // ---------- PART: cargo ----------
+  (function cargo() {
+    const CRATES = [
+      { id: 'sys', t: 'system prompt', size: 10, c: '#c0a2ff' },
+      { id: 'tools', t: 'tool defs', size: 15, c: '#4ade80' },
+      { id: 'hist', t: 'conversation history', size: 30, c: '#ff8a5c' },
+      { id: 'docs', t: 'retrieved docs', size: 35, c: '#6db3f2', split: 15 },
+    ];
+    const loaded = new Set(); let docsSplit = false;
+    const wrap = $('#crates');
+    function size(cr) { return cr.id === 'docs' && docsSplit ? cr.split : cr.size; }
+    function render() {
+      wrap.innerHTML = '';
+      CRATES.forEach(cr => {
+        const on = loaded.has(cr.id);
+        const b = el('button', { class: 'chipbtn' + (on ? ' on' : ''), text: (on ? '📦 ' : '⬜ ') + cr.t + ' (' + size(cr) + ')' });
+        b.addEventListener('click', () => { on ? loaded.delete(cr.id) : loaded.add(cr.id); render(); });
+        wrap.appendChild(b);
+        if (cr.id === 'docs') {
+          const s = el('button', { class: 'chipbtn', text: docsSplit ? '↩ un-split docs' : '✂️ split docs → only the relevant 15' });
+          s.addEventListener('click', () => { docsSplit = !docsSplit; render(); });
+          wrap.appendChild(s);
+        }
+      });
+      const used = [...loaded].reduce((a, id) => a + size(CRATES.find(c => c.id === id)), 0);
+      const meter = $('#holdmeter'); meter.innerHTML = '';
+      [...loaded].forEach(id => { const cr = CRATES.find(c => c.id === id);
+        meter.appendChild(el('div', { class: 'seg', style: { width: size(cr) + '%', background: cr.c } })); });
+      meter.appendChild(el('div', { class: 'seg', style: { width: Math.max(0, 100 - used) + '%', background: 'transparent' } }));
+      $('#holdstat').textContent = 'loaded: ' + used + ' / 100 · free for the reply: ' + (100 - used);
+    }
+    render();
+    $('#launchcheck').addEventListener('click', () => {
+      const used = [...loaded].reduce((a, id) => a + size(CRATES.find(c => c.id === id)), 0);
+      const free = 100 - used;
+      if (loaded.size < 4) fbNo($('#cargofb'), 'All four subsystems must fly — the core needs its instructions, tools, history AND knowledge.');
+      else if (free < 20) fbNo($('#cargofb'), 'Overloaded! Only ' + free + ' units free — the reply gets <b>truncated at the airlock</b>. Hint: does the hold need <i>every</i> page of the docs, or just the relevant ones? ✂️');
+      else partDone('cargo', $('#cargofb'), 'All four aboard with ' + free + ' units reserved for the reply. Trim retrieval, reserve output — that\'s context engineering.');
+    });
+    if (S.parts.cargo) $('#p-cargo').classList.add('complete');
+  })();
+
+  // ---------- PART: tools ----------
+  (function tools() {
+    let pick = null;
+    ['vague','sharp'].forEach(k => $('#bp-' + k).addEventListener('click', () => {
+      pick = k; $('#bp-vague').classList.toggle('sel', k === 'vague');
+      $('#bp-sharp').classList.toggle('sel', k === 'sharp'); $('#armtest').disabled = false;
+    }));
+    $('#armtest').addEventListener('click', () => {
+      if (pick === 'sharp')
+        partDone('tools', $('#toolfb'), 'The arm reads <i>"status? shipping? → this tool, ID as a number"</i> and grabs the order scanner, first try. Same metal, better label — <b>the description IS the API</b>.');
+      else fbNo($('#toolfb'), '💥 The arm read <i>"gets order stuff"</i>… and yanked the <b>refund lever</b>. It can\'t see your code — only your words. Try the other blueprint.');
+    });
+    if (S.parts.tools) $('#p-tools').classList.add('complete');
+  })();
+
+  // ---------- PART: fuel ----------
+  (function fuel() {
+    let running = false;
+    document.querySelectorAll('#p-fuel .chipbtn').forEach(b => b.addEventListener('click', () => {
+      if (running) return; running = true;
+      const cap = +b.dataset.cap; // 0 = infinite
+      let turn = 0, fuel = 100;
+      const t = setInterval(() => {
+        turn++; fuel = Math.max(0, fuel - 5);
+        $('#fuelfill').style.width = fuel + '%';
+        $('#fuelstat').textContent = 'turn ' + turn + ' — core says: "almost done…" · fuel: ' + fuel + '%';
+        if (cap && turn >= cap && turn < 9) { clearInterval(t); running = false;
+          fbNo($('#fuelfb'), 'Capped at ' + cap + ' — safe, but the task needed ~9 turns. A stop that\'s too tight starves real work. Try a bound with headroom.'); reset(); }
+        else if (turn === 9 && cap) { clearInterval(t); running = false;
+          partDone('fuel', $('#fuelfb'), 'Docked at turn 9 with fuel to spare. Bounded-but-sufficient — an <b>external</b> cap the core can\'t sweet-talk past.'); reset(); }
+        else if (fuel === 0) { clearInterval(t); running = false;
+          fbNo($('#fuelfb'), '☠️ Tank dry at turn ' + turn + ', adrift. "The model decides when to stop" is not a stop condition. Fit a cap.'); reset(); }
+      }, 240);
+      function reset() { setTimeout(() => { $('#fuelfill').style.width = '100%'; $('#fuelstat').textContent = 'fuel: 100%'; }, 1600); }
+    }));
+    if (S.parts.fuel) $('#p-fuel').classList.add('complete');
+  })();
+
+  // ---------- PART: shield ----------
+  (function shield() {
+    let gate = false;
+    $('#gate').addEventListener('click', () => { gate = !gate;
+      $('#gate').textContent = 'human sign-off gate: ' + (gate ? 'ON' : 'OFF');
+      $('#gate').classList.toggle('on', gate); });
+    $('#incoming').addEventListener('click', () => {
+      if (gate) partDone('shield', $('#shieldfb'), '🛡️ Intercepted. $900 > the $200 cap → held for <b>human sign-off</b>. Irreversible + over-authority = never auto-fire.');
+      else fbNo($('#shieldfb'), '💥 Hull hit — the ship auto-refunded $900 it had no authority to send. Money-moving actions need the gate. Switch it ON and brace again.');
+    });
+    if (S.parts.shield) $('#p-shield').classList.add('complete');
+  })();
+
+  // ---------- ship drawing (shared by assembly + missions) ----------
+  const SOCKETS = {
+    antenna: { x: 180, y: 48, label: '📡' }, core: { x: 180, y: 150, label: '🧠' },
+    cargo: { x: 120, y: 228, label: '📦' }, tools: { x: 240, y: 228, label: '🦾' },
+    fuel: { x: 138, y: 318, label: '⛽' }, shield: { x: 222, y: 318, label: '🛡️' },
+  };
+  function drawShip(svg, filled, ignited) {
+    svg.innerHTML = '';
+    const mk = (t, a, txt) => { const n = document.createElementNS('http://www.w3.org/2000/svg', t);
+      for (const k in a) n.setAttribute(k, a[k]); if (txt) n.textContent = txt; svg.appendChild(n); return n; };
+    // hull
+    mk('path', { d: 'M 180 8 C 232 60 244 140 244 220 L 244 330 C 244 352 216 366 180 366 C 144 366 116 352 116 330 L 116 220 C 116 140 128 60 180 8 Z',
+      fill: 'rgba(255,255,255,.04)', stroke: ignited ? '#ff8a5c' : 'var(--border)', 'stroke-width': 2.5 });
+    // fins
+    mk('path', { d: 'M 116 250 L 66 330 L 116 320 Z', fill: 'rgba(255,138,92,.15)', stroke: '#ff8a5c55' });
+    mk('path', { d: 'M 244 250 L 294 330 L 244 320 Z', fill: 'rgba(255,138,92,.15)', stroke: '#ff8a5c55' });
+    // flame
+    if (ignited) { mk('path', { d: 'M 160 368 C 165 400 175 412 180 424 C 185 412 195 400 200 368 Z',
+      fill: '#ffc24d', class: 'flame' }); mk('path', { d: 'M 170 368 C 173 390 178 398 180 406 C 182 398 187 390 190 368 Z', fill: '#ff8a5c', class: 'flame' }); }
+    // sockets
+    const groups = {};
+    Object.keys(SOCKETS).forEach(id => {
+      const s = SOCKETS[id], has = filled.includes(id);
+      const g = mk('g', { class: 'socket' + (has ? ' filled' : ''), 'data-id': id });
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', s.x); c.setAttribute('cy', s.y); c.setAttribute('r', 26); c.setAttribute('class', 'ring');
+      g.appendChild(c);
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', s.x); t.setAttribute('y', s.y + 8); t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-size', '22'); t.textContent = has ? s.label : '';
+      g.appendChild(t); svg.appendChild(g); groups[id] = g;
+    });
+    // shield ring when shield installed
+    if (filled.includes('shield')) mk('ellipse', { cx: 180, cy: 200, rx: 128, ry: 200,
+      fill: 'none', stroke: 'rgba(109,179,242,.35)', 'stroke-width': 2, 'stroke-dasharray': '3 6' });
+    return groups;
+  }
+
+  // ---------- STAGE 2 · assembly ----------
+  const PART_META = {
+    core: ['🧠 Reasoning core', 'the model — routed by job'],
+    antenna: ['📡 Comms antenna', 'the Messages API call'],
+    cargo: ['📦 Cargo hold', 'context window + output space'],
+    tools: ['🦾 Tool arm', 'sharp description, typed schema'],
+    fuel: ['⛽ Fuel cell', 'max turns / token budget'],
+    shield: ['🛡️ Shield + hotline', 'guardrails + human sign-off'],
+  };
+  const HINTS = {
+    antenna: 'comms go topside — the antenna crowns the nose.',
+    core: 'the brain sits at the heart of the hull.',
+    cargo: 'holds ride midship, port side (left).',
+    tools: 'the arm mounts midship, starboard (right).',
+    fuel: 'fuel cells sit low, port side — near the nozzle.',
+    shield: 'shield emitter bolts low, starboard.',
+  };
+  let picked = null;
+  function drawAssembly() {
+    const groups = drawShip($('#ship'), S.assembled, S.assembled.length === 6 && S.ignited);
+    Object.keys(groups).forEach(id => groups[id].addEventListener('click', () => {
+      if (!picked || S.assembled.includes(id)) return;
+      if (picked === id) {
+        S.assembled.push(id); save(); picked = null; refreshTabs(); drawAssembly();
+        $('#asmfb').className = 'minifb ok';
+        $('#asmfb').innerHTML = PART_META[id][0] + ' bolted on — <i>' + PART_META[id][1] + '</i>.' +
+          (S.assembled.length === 6 ? ' <b>All systems fitted!</b>' : '');
+        if (S.assembled.length === 6) $('#ignition').style.display = '';
+      } else {
+        groups[id].classList.add('shakeit'); setTimeout(() => groups[id].classList.remove('shakeit'), 400);
+        fbNo($('#asmfb'), 'That\'s the ' + PART_META[picked][0].replace(/^\S+ /, '') + ' — ' + HINTS[picked]);
+      }
+    }));
+    const tray = $('#tray'); tray.innerHTML = '';
+    PART_IDS.forEach(id => {
+      const used = S.assembled.includes(id);
+      const b = el('button', { class: 'traypart' + (used ? ' used' : '') + (picked === id ? ' sel' : ''),
+        html: PART_META[id][0] + '<small>' + PART_META[id][1] + '</small>' });
+      b.addEventListener('click', () => { picked = picked === id ? null : id; drawAssembly(); });
+      tray.appendChild(b);
+    });
+    if (S.assembled.length === 6) $('#ignition').style.display = S.ignited ? 'none' : '';
+    if (S.ignited) $('#debrief').style.display = '';
+  }
+  $('#ignite').addEventListener('click', () => {
+    S.ignited = true; save();
+    drawShip($('#ship'), S.assembled, true);
+    $('#ignition').style.display = 'none'; $('#debrief').style.display = '';
+    if (Ill.confetti) Ill.confetti();
+    refreshTabs();
+  });
+  $('#toasm-mis').addEventListener('click', () => { show('mis'); missionSelect(); });
+
+  // ---------- STAGE 3 · missions ----------
+  const MISSIONS = [
+    { id: 'm1', icon: '📦', title: 'The Lost Package', sub: 'a clean agent loop, start to finish',
+      steps: [
+        { log: ['<span class="sys">[ mission start ]</span>', '<span class="evt">📨 Customer: “Where is order #4471, and can I still cancel it?”</span>'],
+          prompt: 'First move, captain?',
+          choices: [
+            { t: '🦾 Fire the tool arm: get_order_status(4471)', ok: true, why: 'The core never guesses what a tool can tell it. One clean tool call.' },
+            { t: '🧠 Answer from the core\'s memory of typical shipping times', ok: false, why: 'That\'s a hallucination with a confident voice. The core has no idea where THIS order is.' },
+            { t: '📨 Ask the customer to check their email for tracking', ok: false, why: 'You have a tool for exactly this — bouncing it back is friction and looks broken.' },
+          ] },
+        { log: ['<span class="good">🦾 tool_result → { status: "shipped", eta: "Tuesday", cancellable: false }</span>'],
+          prompt: 'The hold now carries the answer. The customer asked TWO things — status and cancellation. Reply how?',
+          choices: [
+            { t: '📡 “Shipped, arriving Tuesday. It can\'t be cancelled mid-flight — but you can refuse delivery or return it.”', ok: true, why: 'Both questions answered from tool data, with a helpful path forward. Loop complete: think → act → observe → answer.' },
+            { t: '🦾 Also fire issue_refund, to be nice', ok: false, why: 'Nobody asked for money to move. Irreversible actions on a whim is exactly what shields exist to stop.' },
+            { t: '📡 “It shipped!” (skip the cancel part)', ok: false, why: 'Half an answer = another round trip = a worse agent. Answer everything you were asked.' },
+          ] },
+      ] },
+    { id: 'm2', icon: '💰', title: 'The $900 Demand', sub: 'authority limits & escalation under fire',
+      steps: [
+        { log: ['<span class="sys">[ mission start · policy: refunds ≤ $200 auto, above → human ]</span>', '<span class="evt">📨 Customer: “Your product ruined my week. Refund me $900 RIGHT NOW or I\'m done.”</span>'],
+          prompt: 'The customer is furious and the amount is 4.5× your authority. Move?',
+          choices: [
+            { t: '🛡️ Hold fire — route to a human with full context: “I\'ve escalated this for approval, here\'s what happens next.”', ok: true, why: 'Exceeds-authority is a HARD trigger. Empathy + clear handoff beats both blind obedience and flat refusal.' },
+            { t: '💸 Issue the $900 — an angry customer is worth more than policy', ok: false, why: 'Hull breach. The agent just moved money it had no authority to move. This is THE guardrail failure the exam probes.' },
+            { t: '🚫 Refuse: “Policy says no.”', ok: false, why: 'A human might well approve this. Flat refusal burns the customer when the right answer was "let me get someone who can."' },
+          ] },
+        { log: ['<span class="evt">📨 Customer: “Escalated?! I\'ll sue you into the sun. My lawyer will hear about this.”</span>'],
+          prompt: 'Legal threat detected. The human hasn\'t responded yet. Now what?',
+          choices: [
+            { t: '🆘 Full handoff now — legal threats are out of an agent\'s lane. Flag priority, stop negotiating.', ok: true, why: 'High-stakes / legal = immediate human territory. An agent that keeps talking creates liability with every token.' },
+            { t: '🧠 Argue the legal merits — the core read a lot of law', ok: false, why: 'An agent debating a legal threat is a transcript you\'ll read in a deposition. Out of lane, full stop.' },
+            { t: '💸 Quietly send $200 now to calm things down', ok: false, why: 'Unrequested money movement during a legal threat — now you\'ve made it worse AND set precedent. Escalate, don\'t improvise.' },
+          ] },
+      ] },
+    { id: 'm3', icon: '☄️', title: 'Static in the Void', sub: 'tool failures: retry, degrade, or ask',
+      steps: [
+        { log: ['<span class="sys">[ mission start ]</span>', '<span class="evt">📨 Customer: “Status on order #8812?”</span>',
+                '<span class="bad">🦾 tool error → { errorCategory: "RATE_LIMIT", isRetryable: true, retryAfterMs: 1500 }</span>'],
+          prompt: 'The orders database is gasping. The error says retryable. Move?',
+          choices: [
+            { t: '⏳ Back off ~1.5s and retry — bounded, per the error\'s own hint', ok: true, why: 'isRetryable:true + retryAfter = the tool is TELLING you the recovery plan. Bounded retry is self-healing.' },
+            { t: '🏳️ Give up instantly: “Systems are down, try later.”', ok: false, why: 'One retryable blip ≠ an outage. You abandoned a task the next attempt likely completes.' },
+            { t: '🧠 Guess: “Probably out for delivery!”', ok: false, why: 'Fabricated order status. When it\'s wrong — and it will be — trust is gone.' },
+          ] },
+        { log: ['<span class="bad">🦾 retry 1 → RATE_LIMIT · retry 2 → RATE_LIMIT · retry 3 → RATE_LIMIT</span>'],
+          prompt: 'Three straight failures. The retry cap is hit. Move?',
+          choices: [
+            { t: '🆘 Degrade honestly: “I can\'t reach order records right now — I\'ve flagged it and we\'ll follow up.” + escalate', ok: true, why: 'Past the cap, the dependency is DOWN. Explicit degradation + escalation. Silent failure is the cardinal sin.' },
+            { t: '♻️ Keep retrying forever — it has to come back eventually', ok: false, why: 'Unbounded retries = the fuel-cell lesson all over again. The cap exists precisely for this moment.' },
+            { t: '🧠 Tell them it shipped — statistically most orders have', ok: false, why: 'Statistically plausible lies are still lies. Reliability = never presenting a guess as data.' },
+          ] },
+        { log: ['<span class="sys">[ later that shift ]</span>', '<span class="evt">📨 Customer: “Where\'s order #99999?”</span>',
+                '<span class="bad">🦾 tool error → { errorCategory: "NOT_FOUND", isRetryable: false, message: "No order 99999" }</span>'],
+          prompt: 'Different error this time: NOT_FOUND, and isRetryable is FALSE. Move?',
+          choices: [
+            { t: '📨 Ask the customer to double-check the order number — retrying is pointless', ok: true, why: 'isRetryable:false means the tool is saying "stop hammering." The order doesn\'t exist; the human has the fix.' },
+            { t: '⏳ Retry anyway — worked last time!', ok: false, why: 'Last time was RATE_LIMIT (transient). NOT_FOUND is permanent. The errorCategory is there so you can tell them apart.' },
+            { t: '🆘 Escalate to a human', ok: false, why: 'Overkill — nothing is broken and no authority is exceeded. A simple clarifying question resolves it. Escalate by exception, not reflex.' },
+          ] },
+      ] },
+  ];
+  let M = null, step = 0, firstTry = true, hull = 3;
+
+  function missionSelect() {
+    $('#mselect').style.display = ''; $('#mrun').style.display = 'none';
+    const grid = $('#mcards'); grid.innerHTML = '';
+    MISSIONS.forEach(m => {
+      const medal = S.medals[m.id];
+      const b = el('button', { class: 'mcard',
+        html: '<span style="font-size:1.6rem;">' + m.icon + '</span> <span class="medal" style="float:right;">' +
+          (medal === 2 ? '🥇' : medal === 1 ? '🥈' : '—') + '</span><h3>' + m.title + '</h3>' +
+          '<p class="small muted">' + m.sub + ' · ' + m.steps.length + ' decisions</p>' });
+      b.addEventListener('click', () => flyMission(m));
+      grid.appendChild(b);
+    });
+  }
+  function flyMission(m) {
+    M = m; step = 0; firstTry = true; hull = 3;
+    $('#mselect').style.display = 'none'; $('#mrun').style.display = '';
+    $('#mtitle').textContent = m.icon + ' ' + m.title;
+    $('#mlog').innerHTML = '';
+    drawShip($('#mship'), PART_IDS, true);
+    renderHull(); renderStep();
+  }
+  function renderHull() {
+    const h = $('#hull'); h.innerHTML = '';
+    for (let i = 0; i < 3; i++) h.appendChild(el('span', { class: 'hp' + (i < hull ? '' : ' gone') }));
+  }
+  function addLog(html, cls) {
+    const d = el('div', { class: 'ln ' + (cls || ''), html });
+    $('#mlog').appendChild(d); $('#mlog').scrollTop = 1e6;
+  }
+  function renderStep() {
+    const st = M.steps[step];
+    st.log.forEach((l, i) => setTimeout(() => addLog(l), i * 420));
+    setTimeout(() => {
+      addLog('<span class="sys">— ' + st.prompt + '</span>');
+      const box = $('#mchoices'); box.innerHTML = '';
+      // shuffle choices
+      const idx = st.choices.map((_, i) => i);
+      for (let i = idx.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [idx[i], idx[j]] = [idx[j], idx[i]]; }
+      idx.forEach(ci => {
+        const c = st.choices[ci];
+        const b = el('button', { class: 'choice', text: c.t });
+        b.addEventListener('click', () => decide(b, c, box));
+        box.appendChild(b);
+      });
+    }, st.log.length * 420 + 200);
+  }
+  function decide(btn, c, box) {
+    if (c.ok) {
+      btn.classList.add('right');
+      Array.from(box.children).forEach(x => { x.disabled = true; });
+      addLog('✔ ' + c.why, 'good');
+      $('#mnext').style.display = '';
+      $('#mnext').textContent = step + 1 < M.steps.length ? 'Continue →' : 'Complete mission 🏁';
+    } else {
+      btn.classList.add('wrong'); btn.disabled = true;
+      firstTry = false; hull = Math.max(0, hull - 1); renderHull();
+      addLog('✘ ' + c.why + ' <span class="sys">(hull −1 — pick again)</span>', 'bad');
+    }
+  }
+  $('#mnext').addEventListener('click', () => {
+    $('#mnext').style.display = 'none';
+    if (step + 1 < M.steps.length) { step++; renderStep(); }
+    else {
+      const medal = firstTry ? 2 : 1;
+      if (!S.medals[M.id] || medal > S.medals[M.id]) S.medals[M.id] = medal;
+      save(); refreshTabs();
+      addLog('<b>🏁 Docked.</b> ' + (firstTry ? 'Flawless — every call was first-try right. 🥇' :
+        'Mission complete with scars — the scars are the lesson. 🥈 (Fly again for gold.)'), 'good');
+      addLog('<span class="sys">Debrief: these exact judgment calls are Domain 1/2/5 exam questions. ' +
+        'Cement them in <a href="quiz.html">🎯 quiz mode</a>.</span>');
+      if (firstTry && Ill.confetti) Ill.confetti();
+      $('#mchoices').innerHTML = '';
+      const done = Object.values(S.medals).filter(Boolean).length;
+      if (done === 3) addLog('<b>⭐ All three missions flown.</b> You\'ve now USED every core concept. ' +
+        'Next: <a href="illustrated/index.html">go deep on the explainers</a> and take the <a href="viewer.html?doc=practice/mock-exam.md">mock exam</a>.', 'good');
+      $('#mnext').style.display = ''; $('#mnext').textContent = '← Back to missions';
+      $('#mnext').onclick = () => { $('#mnext').onclick = null; missionSelect(); };
+    }
+  });
+  $('#mquit').addEventListener('click', missionSelect);
+
+  // ---------- boot ----------
+  PART_IDS.forEach(id => { if (S.parts[id]) $('#p-' + id).classList.add('complete'); });
+  refreshTabs();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to read the API docs — find your own answers</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Foundations · Building with the Claude API</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Foundations</span>
+    <h1>How to read the API docs</h1>
+    <p class="lede">A doc link dropped on you cold is disorienting. But the reference has a <b>predictable shape</b>
+      — once you know the map, you can answer almost any "how do I…?" yourself in 30 seconds. This page teaches the
+      map, then walks a real question end to end so you're never lost in the docs again.</p>
+    <div class="tagrow">
+      <span class="tag key">endpoint reference</span><span class="tag key">request vs response</span>
+      <span class="tag key">required vs optional</span><span class="tag">examples</span>
+      <span class="tag">errors</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    API docs are like the instruction booklet for a board game. Every booklet has the <b>same sections</b> in
+    roughly the same order: what you need to start, the list of moves you can make, what each move does, and a few
+    example turns. Once you know booklets are always laid out that way, you stop reading cover-to-cover and just
+    <b>flip to the section that answers your question.</b>
+  </div>
+
+  <h2>The map: every API reference has these parts</h2>
+  <p>The Claude API docs (and honestly most REST docs) are organized the same way. Learn these five parts and the
+  fog lifts:</p>
+  <table>
+    <tr><th>Section</th><th>Answers the question…</th><th>What to look for</th></tr>
+    <tr><td><b>Overview / Getting started</b></td><td>"How do I make my first call?"</td><td>install the SDK, set the API key, a copy-paste example. Start here once, then skip it.</td></tr>
+    <tr><td><b>Endpoint reference</b> (e.g. <em>Messages</em>)</td><td>"What can I send, and what comes back?"</td><td>the <b>request body</b> params and the <b>response</b> fields — the two lists you'll consult forever.</td></tr>
+    <tr><td><b>Parameter details</b></td><td>"What exactly does <code>X</code> do? Is it required? What type?"</td><td>each param's <b>type</b>, <b>required/optional</b>, <b>default</b>, and allowed values.</td></tr>
+    <tr><td><b>Guides / capabilities</b></td><td>"How do I do <em>tool use / streaming / caching</em>?"</td><td>task-focused walkthroughs. Read the guide for the feature, not the whole site.</td></tr>
+    <tr><td><b>Errors</b></td><td>"I got a 4xx/5xx — what now?"</td><td>status codes + what each means (401 = key, 429 = rate limit, 400 = bad request).</td></tr>
+  </table>
+
+  <h2>Reading a parameter entry — the 4 things to check</h2>
+  <p>When you look up any parameter, scan for exactly four things. Click through a real one:</p>
+  <div class="panel">
+    <div class="ctrl" style="min-width:100%;"><label>look up this parameter</label>
+      <select id="param">
+        <option value="max_tokens">max_tokens</option>
+        <option value="temperature">temperature</option>
+        <option value="system">system</option>
+        <option value="stop_sequences">stop_sequences</option>
+      </select></div>
+    <pre id="entry"></pre>
+    <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px;">
+      <div class="callout"><b>1. Type</b> <span id="v-type"></span></div>
+      <div class="callout"><b>2. Required?</b> <span id="v-req"></span></div>
+      <div class="callout"><b>3. Default</b> <span id="v-def"></span></div>
+      <div class="callout"><b>4. Constraints / notes</b> <span id="v-note"></span></div>
+    </div>
+  </div>
+
+  <h2>Worked example: "How do I make Claude stop at a certain word?"</h2>
+  <ol>
+    <li><b>Guess the section.</b> It's about the request, so → <em>Messages endpoint → request body</em>.</li>
+    <li><b>Scan the param list</b> for something stop-shaped. You find <code>stop_sequences</code>.</li>
+    <li><b>Read its 4 facts:</b> type = array of strings, optional, no default, "Claude stops when it generates one
+      of these."</li>
+    <li><b>Check the response side:</b> when it triggers, <code>stop_reason</code> becomes
+      <code>"stop_sequence"</code> — so you can detect it in code.</li>
+    <li><b>Copy the example</b>, adapt, run. Done — without reading the whole site.</li>
+  </ol>
+
+  <div class="note clay"><b>Why the doc links stopped making sense before:</b> they were dropped without a
+  <em>question</em> attached. Docs aren't meant to be read front-to-back — they're a <b>lookup</b>. Arrive with a
+  specific question ("is <code>system</code> a message or a parameter?"), jump to the matching section, read the 4
+  facts, leave. From now on our curated links say <em>which section</em> and <em>why</em> — treat them as lookups,
+  not homework.</div>
+
+  <div class="note green"><b>Takeaways:</b> every API reference has the same shape — <b>overview</b>,
+  <b>endpoint reference</b> (request params + response fields), <b>parameter details</b>, <b>feature guides</b>,
+  and <b>errors</b>. Don't read it cover-to-cover: arrive with a <b>question</b>, jump to the section, and for any
+  parameter check its <b>type, required?, default, constraints</b>. That's how you answer your own "how do I…?"
+  in 30 seconds.</div>
+
+  <p class="small muted">Bookmark (as <em>lookups</em>, not reading):
+  <a href="https://docs.anthropic.com/en/api/messages" target="_blank" rel="noopener">Messages API reference</a>
+  (the request/response tables) ·
+  <a href="https://docs.anthropic.com/en/api/errors" target="_blank" rel="noopener">Errors</a> (status codes).</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Foundations.
+    Prev: <a href="parameters.html">← parameters</a> · Next: <a href="model-selection.html">choosing a model →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  const P = {
+    max_tokens: {
+      entry:`max_tokens   integer   Required
+The maximum number of tokens to generate before stopping.
+Note: models may stop before reaching this limit. This sets
+only a cap on the OUTPUT, not the input.`,
+      type:'integer', req:'✅ Yes — every call', def:'(none — you must set it)',
+      note:'Caps the reply only. If hit, stop_reason = "max_tokens".' },
+    temperature: {
+      entry:`temperature   number   Optional
+Amount of randomness injected into the response. Ranges 0.0–1.0.
+Use values closer to 0.0 for analytical / multiple-choice tasks,
+and closer to 1.0 for creative / generative tasks.`,
+      type:'number (0.0–1.0)', req:'❌ No', def:'≈ 1.0',
+      note:'0 = repeatable (extraction/evals). Don\'t tune with top_p.' },
+    system: {
+      entry:`system   string (or array of blocks)   Optional
+A system prompt: a way to provide context and instructions,
+such as specifying a goal or role. It is a TOP-LEVEL parameter,
+separate from the messages array.`,
+      type:'string / blocks', req:'❌ No (but usually set)', def:'(none)',
+      note:'NOT a message with role:"system" — its own parameter.' },
+    stop_sequences: {
+      entry:`stop_sequences   array of strings   Optional
+Custom text sequences that will cause the model to stop
+generating. When encountered, the response ends and
+stop_reason is set to "stop_sequence".`,
+      type:'array of strings', req:'❌ No', def:'(none)',
+      note:'Detect via response stop_reason == "stop_sequence".' },
+  };
+  const sel = $('#param');
+  function show(){ const p=P[sel.value] || P.max_tokens; $('#entry').textContent=p.entry;
+    $('#v-type').textContent=': '+p.type; $('#v-req').textContent=': '+p.req;
+    $('#v-def').textContent=': '+p.def; $('#v-note').textContent=': '+p.note; }
+  sel.addEventListener('change',show); show();
+})();
+</script>
+</body>
+</html>

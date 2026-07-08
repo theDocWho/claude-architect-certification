@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy of a prompt — the structure Claude reads best</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../index.html">← All explainers</a>
+  <span class="spacer"></span>
+  <span class="pill">Domain 4 · Prompt Engineering (20%)</span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="domainbadge">Domain 4 · Prompt Engineering &amp; Structured Output</span>
+    <h1>Anatomy of a prompt</h1>
+    <p class="lede">A great prompt isn't clever wording — it's <b>structure</b>. Claude responds best to clearly
+      separated parts: a <b>role</b> and task, <b>context</b> marked off with XML tags, explicit <b>criteria</b>,
+      and (optionally) a <b>prefill</b> to shape the start of the answer. Assemble a prompt block by block and
+      watch a vague request turn into a reliable one.</p>
+    <div class="tagrow">
+      <span class="tag key">system prompt / role</span><span class="tag key">XML tags</span>
+      <span class="tag key">explicit criteria</span><span class="tag">prefill</span>
+      <span class="tag">be clear & direct</span>
+    </div>
+  </div>
+
+  <div class="eli10">
+    <div class="h">Explain like I'm 10</div>
+    Imagine asking a super-smart but very literal helper to do something. If you mumble "make this better," they
+    have no idea what "better" means. But if you say "<b>You're a careful editor.</b> Here's the story
+    <b>[between these fences]</b>. Fix only spelling. Don't change the plot," they nail it. Prompting is just
+    <b>putting your request in clearly-labelled boxes</b> so nothing is left to a guess.
+  </div>
+
+  <h2>Build the prompt — toggle each part on</h2>
+  <p>Start with a bare instruction and switch on each technique. Watch the prompt grow more reliable, and read
+  <em>why</em> each part helps:</p>
+
+  <div class="panel">
+    <div class="controls">
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="role" checked> role + clear task</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="xml" checked> XML-tagged context</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="crit" checked> explicit criteria</label>
+      <label class="ctrl" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;"><input type="checkbox" id="prefill"> prefill the answer</label>
+    </div>
+    <pre id="prompt"></pre>
+    <p id="why" class="note"></p>
+  </div>
+
+  <h2>The order that works</h2>
+  <ol>
+    <li><b>Role / system prompt</b> — set who Claude is acting as ("a meticulous financial analyst"). Goes in the
+      <code>system</code> parameter, not the user turn.</li>
+    <li><b>Task, stated as explicit criteria</b> — say exactly what to do and what "good" looks like. Replace
+      vague adjectives ("concise", "professional") with checkable rules ("≤ 3 bullets", "no jargon").</li>
+    <li><b>Context, in XML tags</b> — wrap documents/data in tags like <code>&lt;transcript&gt;…&lt;/transcript&gt;</code>
+      so Claude can tell <em>your data</em> from <em>your instructions</em>. Put long documents <b>before</b> the
+      question.</li>
+    <li><b>Examples (few-shot)</b> — show 1–3 input→output pairs for anything ambiguous (its own explainer).</li>
+    <li><b>Prefill</b> — start Claude's reply for it (e.g. <code>{</code> or <code>&lt;analysis&gt;</code>) to lock
+      the format.</li>
+  </ol>
+
+  <div class="note clay"><b>Exam trap:</b> the winning answers favour <b>explicit, checkable criteria</b> over
+  vague adjectives, and <b>XML tags</b> to separate instructions from data. "Be more detailed/professional" is a
+  distractor — it isn't measurable. Also: the <b>role</b> belongs in the <code>system</code> prompt, and long
+  context goes <b>before</b> the question, not after.</div>
+
+  <div class="note green"><b>Takeaways:</b> structure beats cleverness. Set a <b>role</b> in the system prompt,
+  state the task as <b>explicit criteria</b> (not vague adjectives), wrap data in <b>XML tags</b> so Claude
+  separates instructions from content, add <b>few-shot examples</b> for ambiguity, and use a <b>prefill</b> to
+  lock the output format. Put long documents <em>before</em> the question.</div>
+
+  <p class="small muted">Curated companion: <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview" target="_blank" rel="noopener">Anthropic — Prompt engineering guide</a>.</p>
+
+  <div class="footer">
+    Part of the <a href="../index.html">Claude Architect — Illustrated</a> catalog · Domain 4.
+    Next: <a href="few-shot.html">few-shot prompting →</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>
+(function () {
+  const $ = Ill.$;
+  function render() {
+    const role=$('#role').checked, xml=$('#xml').checked, crit=$('#crit').checked, prefill=$('#prefill').checked;
+    let sys = '', user = '', asst = '';
+    if (role) sys = 'system: You are a meticulous customer-support quality analyst.\\n\\n';
+    else sys = '';
+    user += 'Summarize this support call.';
+    if (crit) user = 'Summarize this support call. Output exactly: (1) the customer\'s issue in one sentence, (2) the resolution, (3) sentiment as one of [happy, neutral, upset]. No preamble.';
+    if (xml) user += '\\n\\n<transcript>\\nCUST: my order never came...\\nAGENT: so sorry, I\'ve reshipped it free.\\n</transcript>';
+    else user += '\\n\\nThe transcript: my order never came... reshipped it free.';
+    if (prefill) asst = '\\n\\nassistant: (1)';
+    let out = (sys?sys:'') + 'user: ' + user + (prefill?asst:'');
+    $('#prompt').textContent = out;
+    const notes = [];
+    notes.push(role ? '✅ <b>Role</b> primes the right persona & rigor.' : '⚠ No role — generic tone, less consistent.');
+    notes.push(crit ? '✅ <b>Explicit criteria</b> make output checkable & uniform.' : '⚠ "Summarize" is vague — every run differs.');
+    notes.push(xml ? '✅ <b>XML tags</b> separate data from instructions (also resists injection).' : '⚠ Data blends into instructions — Claude may follow text inside it.');
+    notes.push(prefill ? '✅ <b>Prefill</b> locks the format from token one.' : '○ No prefill (optional) — format relies on the instructions alone.');
+    const warn = notes.some(n=>n.includes('⚠'));
+    $('#why').className = 'note ' + (warn?'':'green');
+    $('#why').innerHTML = notes.join('<br>');
+  }
+  ['role','xml','crit','prefill'].forEach(id=>$('#'+id).addEventListener('change',render)); render();
+})();
+</script>
+</body>
+</html>
