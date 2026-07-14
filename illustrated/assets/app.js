@@ -243,7 +243,26 @@
     }
   }
 
-  function boot() { injectNav(); enhance(); }
+  // ---- moved banner: this deployment is archival; the canonical site lives on-domain ----
+  function movedBanner() {
+    var NEW_BASE = "https://learn-by-visuallization.org/architect/";
+    var path = location.pathname.replace(/^\/claude-architect-certification\//, "").replace(/^\//, "");
+    var target = NEW_BASE + path + location.search;
+    var bar = el("div", { style: {
+      background: "linear-gradient(135deg, #ff8a5c, #f4603a)", color: "#1d1207",
+      padding: "9px 16px", textAlign: "center", fontSize: "13.5px", fontWeight: "600",
+      lineHeight: "1.5", position: "relative", zIndex: "1000",
+    } });
+    var a = el("a", { href: target, text: "learn-by-visuallization.org/architect", style: {
+      color: "#1d1207", fontWeight: "800", textDecoration: "underline", textUnderlineOffset: "2px",
+    } });
+    bar.appendChild(document.createTextNode("📦 This site has moved — the maintained version (with The Path, guided experiments & more) is at "));
+    bar.appendChild(a);
+    bar.appendChild(document.createTextNode(". This copy is archived."));
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
+
+  function boot() { movedBanner(); injectNav(); enhance(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
