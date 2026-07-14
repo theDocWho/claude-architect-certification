@@ -1,5 +1,12 @@
 # 🏛️ Claude Certified Architect — a visual, project-first prep track
 
+> [!IMPORTANT]
+> **📦 This repo has moved.** The maintained version lives in
+> [`theDocWho/ai-ml-roadmap`](https://github.com/theDocWho/ai-ml-roadmap) under `architect/`, deployed at
+> **[learn-by-visuallization.org/architect](https://learn-by-visuallization.org/architect/)** — with everything
+> here **plus** 🧭 The Path (six mastery ladders with quizzes, exercises and scenario drills), 🧪 guided
+> experiments on all 26 explainers, and a 50-question quiz bank. This copy is **archived** and no longer updated.
+
 A free, **build-it-to-learn-it** path to passing the **Claude Certified Architect — Foundations (CCA-F)** exam —
 and to actually *being* an architect, not just passing a test. Everything here is mapped to the exam's five
 domains, taught with **interactive explainers you can click and drive**, and reinforced with **résumé-worthy
