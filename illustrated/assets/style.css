@@ -363,3 +363,20 @@ tr:nth-child(even) td { background: rgba(255,255,255,.022); }
 /* explainer SVG diagrams: pastel-filled nodes stay light "cards" — give
    their labels/edges enough contrast on the dark panel */
 svg text { paint-order: stroke; }
+
+/* ---- inline "Check yourself" quiz (ported from roadmap; reuses the domain QUIZ bank) ---- */
+.quizwrap { margin: 10px 0 4px; }
+.qcard { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(255,255,255,.035);
+  padding: 16px 18px; margin: 12px 0; }
+.qcard .qq { margin: 2px 0 10px; }
+.choices { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.choice { cursor: pointer; text-align: left; border-radius: 10px; padding: 10px 13px; font-size: 14px; font-weight: 500;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none; }
+.choice:hover { border-color: var(--blue); filter: none; }
+.choice.good { border-color: var(--green); background: rgba(61,220,132,.12); }
+.choice.bad { border-color: var(--red); background: rgba(255,122,110,.12); }
+.choice:disabled { cursor: default; opacity: .75; }
+.fb2 { font-size: 13.5px; border-radius: 10px; padding: 10px 13px; margin-top: 10px; display: none; }
+.fb2.ok { display: block; background: rgba(61,220,132,.10); border: 1px solid rgba(61,220,132,.4); color: #8fe6b4; }
+.fb2.no { display: block; background: rgba(255,122,110,.10); border: 1px solid rgba(255,122,110,.4); color: #ffb3aa; }
+.qscore { font-weight: 800; color: var(--green); margin: 10px 0 0; font-size: 1.02rem; }
