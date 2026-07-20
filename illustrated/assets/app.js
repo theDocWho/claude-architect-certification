@@ -248,10 +248,44 @@
     document.body.appendChild(qd);
   }
 
+  // ---- practice notebooks (hands-on Claude API, run on Colab/Kaggle) ----
+  // Domain dir -> notebook path in the public companion repo. Cert notebooks call
+  // the live API (need a key + internet), so we link them from GitHub rather than
+  // shipping offline copies.
+  const NB_REPO = "theDocWho/lbv-notebooks";
+  const NB = {
+    "api-foundations": "claude-architect/00-foundations-api.ipynb",
+    "1-agentic": "claude-architect/01-agentic-tool-loop.ipynb",
+  };
+  function practicePanel() {
+    const dir = location.pathname.split("/").slice(-2, -1)[0];
+    const nb = NB[dir];
+    if (!nb || document.querySelector(".practice")) return;
+    const wrap = document.querySelector(".wrap");
+    if (!wrap) return;
+    const raw = "https://raw.githubusercontent.com/" + NB_REPO + "/main/" + nb;
+    const box = el("div", { class: "practice" }, [
+      el("div", { class: "plabel", text: "🧪 PRACTICE — RUN IT YOURSELF" }),
+      el("p", { class: "ptext", html: "Reading builds intuition; <b>running the API cements it</b>. This domain has a " +
+        "hands-on notebook — a live Claude agent loop with TODO exercises and self-checking asserts. " +
+        "Run it free on Colab or Kaggle (you supply an Anthropic API key; a full pass costs a few cents)." }),
+      el("div", { class: "pbtns" }, [
+        el("a", { class: "nbbtn colab", target: "_blank", rel: "noopener",
+          href: "https://colab.research.google.com/github/" + NB_REPO + "/blob/main/" + nb, text: "▶ Open in Colab" }),
+        el("a", { class: "nbbtn kaggle", target: "_blank", rel: "noopener",
+          href: "https://kaggle.com/kernels/welcome?src=" + raw, text: "Open in Kaggle" }),
+        el("a", { class: "nbbtn", target: "_blank", rel: "noopener", href: raw, text: "⬇ Notebook (.ipynb)" }),
+      ]),
+    ]);
+    const pn = wrap.querySelector(".prevnext");
+    if (pn) wrap.insertBefore(box, pn); else wrap.appendChild(box);
+  }
+
   function enhance() {
     const wrap = document.querySelector(".wrap");
     if (!wrap) return;
     loadPageQuiz();
+    practicePanel();
 
     // reading progress bar
     if (!document.getElementById("readbar")) {

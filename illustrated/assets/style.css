@@ -380,3 +380,16 @@ svg text { paint-order: stroke; }
 .fb2.ok { display: block; background: rgba(61,220,132,.10); border: 1px solid rgba(61,220,132,.4); color: #8fe6b4; }
 .fb2.no { display: block; background: rgba(255,122,110,.10); border: 1px solid rgba(255,122,110,.4); color: #ffb3aa; }
 .qscore { font-weight: 800; color: var(--green); margin: 10px 0 0; font-size: 1.02rem; }
+/* ---- practice notebook panel (hands-on Claude API; injected before prev/next) ---- */
+.practice { border: 1.5px dashed rgba(61,220,132,.45); border-radius: 16px; background: rgba(61,220,132,.05);
+  padding: 18px 22px; margin: 46px 0 0; }
+.practice .plabel { font-size: 11px; font-weight: 800; letter-spacing: .14em; color: var(--green); margin-bottom: 6px; }
+.practice .ptext { margin: 4px 0 12px; font-size: .96rem; color: #b9c6de; }
+.practice .pbtns { display: flex; flex-wrap: wrap; gap: 10px; }
+.nbbtn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 700; font-size: 13.5px;
+  padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); color: #dfe7f5;
+  background: rgba(255,255,255,.07); }
+.nbbtn:hover { background: rgba(255,255,255,.13); }
+.nbbtn.colab { background: linear-gradient(135deg,#12a35f,#0b8f50); border: none; color: #fff; box-shadow: 0 6px 20px rgba(11,163,96,.35); }
+.nbbtn.colab:hover { filter: brightness(1.1); }
+.nbbtn.kaggle { border-color: rgba(76,201,240,.5); color: #7fd6f7; }

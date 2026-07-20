@@ -38,7 +38,7 @@
   sub.innerHTML = "Exam-style scenarios from <b>" + (set.label || "this domain") +
     "</b>. Drill the full set on the <a href=\"../../quiz.html\">Quiz</a> page.";
   var host = document.createElement("div");
-  var anchor = wrap.querySelector(".prevnext");
+  var anchor = wrap.querySelector(".practice") || wrap.querySelector(".prevnext");
   if (anchor) { wrap.insertBefore(h, anchor); wrap.insertBefore(sub, anchor); wrap.insertBefore(host, anchor); }
   else { wrap.appendChild(h); wrap.appendChild(sub); wrap.appendChild(host); }
   Ill.quiz(host, qs, "cca-quiz:" + dir + "/" + file);
