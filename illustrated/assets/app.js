@@ -184,9 +184,112 @@
     })();
   }
 
+  // ---- inline quiz (same shape as roadmap Ill.quiz) ----
+  // questions = [{ q, choices: [..], a: idx, why }]. Score persists to localStorage.
+  function quiz(host, questions, storeKey) {
+    if (typeof host === "string") host = $(host);
+    if (!host) return;
+    const store = storeKey || "cca-quiz:" + location.pathname.split("/").slice(-2).join("/");
+    let score = 0, answered = 0;
+    const wrap = el("div", { class: "quizwrap" });
+    const tally = el("div", { class: "qscore" });
+    questions.forEach((q, qi) => {
+      const card = el("div", { class: "qcard" });
+      card.appendChild(el("p", { class: "qq", html: "<b>Q" + (qi + 1) + ".</b> " + q.q }));
+      const fb = el("div", { class: "fb2" });
+      const box = el("div", { class: "choices" });
+      const btns = q.choices.map((c, ci) => {
+        const b = el("button", { class: "choice", type: "button", html: c });
+        b.addEventListener("click", () => {
+          if (b.disabled) return;
+          btns.forEach((x) => { x.disabled = true; });
+          answered++;
+          if (ci === q.a) {
+            score++; b.classList.add("good");
+            fb.className = "fb2 ok"; fb.innerHTML = "✓ " + (q.why || "Correct.");
+          } else {
+            b.classList.add("bad"); btns[q.a].classList.add("good");
+            fb.className = "fb2 no"; fb.innerHTML = "✗ " + (q.why || "");
+          }
+          if (answered === questions.length) {
+            tally.textContent = "Score: " + score + " / " + questions.length +
+              (score === questions.length ? " — perfect 🎯" : "");
+            try { localStorage.setItem(store, JSON.stringify({ score, total: questions.length, ts: Date.now() })); } catch (e) {}
+          }
+        });
+        box.appendChild(b);
+        return b;
+      });
+      card.appendChild(box);
+      card.appendChild(fb);
+      wrap.appendChild(card);
+    });
+    wrap.appendChild(tally);
+    host.appendChild(wrap);
+    return wrap;
+  }
+
+  // Load the domain quiz bank + injector on domain explainer pages (reuses window.QUIZ).
+  function loadPageQuiz() {
+    const dir = location.pathname.split("/").slice(-2, -1)[0];
+    const DOMAIN = { "1-agentic": "d1", "2-tools-mcp": "d2", "3-claude-code": "d3", "4-prompting": "d4", "5-context": "d5" };
+    if (!DOMAIN[dir] || document.querySelector(".quizwrap") || document.getElementById("pagequiz-js")) return;
+    const me = document.querySelector('script[src*="assets/app.js"]');
+    if (!me) return;
+    const base = me.getAttribute("src").replace(/app\.js$/, "");
+    const inject = () => {
+      const s = document.createElement("script");
+      s.id = "pagequiz-js"; s.src = base + "page-quiz.js";
+      document.body.appendChild(s);
+    };
+    if (window.QUIZ) { inject(); return; }
+    const qd = document.createElement("script");
+    qd.src = base + "quiz-data.js"; qd.onload = inject;
+    document.body.appendChild(qd);
+  }
+
+  // ---- practice notebooks (hands-on Claude API, run on Colab/Kaggle) ----
+  // Domain dir -> notebook path in the public companion repo. Cert notebooks call
+  // the live API (need a key + internet), so we link them from GitHub rather than
+  // shipping offline copies.
+  const NB_REPO = "theDocWho/lbv-notebooks";
+  const NB = {
+    "api-foundations": "claude-architect/00-foundations-api.ipynb",
+    "1-agentic": "claude-architect/01-agentic-tool-loop.ipynb",
+    "2-tools-mcp": "claude-architect/02-tool-design-mcp.ipynb",
+    "4-prompting": "claude-architect/04-prompting-structured-output.ipynb",
+    "5-context": "claude-architect/05-context-caching-reliability.ipynb",
+    // 3-claude-code is CLI configuration, not a runnable API notebook — intentionally omitted.
+  };
+  function practicePanel() {
+    const dir = location.pathname.split("/").slice(-2, -1)[0];
+    const nb = NB[dir];
+    if (!nb || document.querySelector(".practice")) return;
+    const wrap = document.querySelector(".wrap");
+    if (!wrap) return;
+    const raw = "https://raw.githubusercontent.com/" + NB_REPO + "/main/" + nb;
+    const box = el("div", { class: "practice" }, [
+      el("div", { class: "plabel", text: "🧪 PRACTICE — RUN IT YOURSELF" }),
+      el("p", { class: "ptext", html: "Reading builds intuition; <b>running the API cements it</b>. This domain has a " +
+        "hands-on notebook — a live Claude agent loop with TODO exercises and self-checking asserts. " +
+        "Run it free on Colab or Kaggle (you supply an Anthropic API key; a full pass costs a few cents)." }),
+      el("div", { class: "pbtns" }, [
+        el("a", { class: "nbbtn colab", target: "_blank", rel: "noopener",
+          href: "https://colab.research.google.com/github/" + NB_REPO + "/blob/main/" + nb, text: "▶ Open in Colab" }),
+        el("a", { class: "nbbtn kaggle", target: "_blank", rel: "noopener",
+          href: "https://kaggle.com/kernels/welcome?src=" + raw, text: "Open in Kaggle" }),
+        el("a", { class: "nbbtn", target: "_blank", rel: "noopener", href: raw, text: "⬇ Notebook (.ipynb)" }),
+      ]),
+    ]);
+    const pn = wrap.querySelector(".prevnext");
+    if (pn) wrap.insertBefore(box, pn); else wrap.appendChild(box);
+  }
+
   function enhance() {
     const wrap = document.querySelector(".wrap");
     if (!wrap) return;
+    loadPageQuiz();
+    practicePanel();
 
     // reading progress bar
     if (!document.getElementById("readbar")) {
@@ -266,5 +369,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 
-  global.Ill = { clamp, lerp, softmax, rng, $, $$, el, slider, arrow, box, SEQ, getVisited, confetti };
+  global.Ill = { clamp, lerp, softmax, rng, $, $$, el, slider, arrow, box, SEQ, getVisited, confetti, quiz };
 })(window);
