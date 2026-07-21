@@ -256,6 +256,10 @@
   const NB = {
     "api-foundations": "claude-architect/00-foundations-api.ipynb",
     "1-agentic": "claude-architect/01-agentic-tool-loop.ipynb",
+    "2-tools-mcp": "claude-architect/02-tool-design-mcp.ipynb",
+    "4-prompting": "claude-architect/04-prompting-structured-output.ipynb",
+    "5-context": "claude-architect/05-context-caching-reliability.ipynb",
+    // 3-claude-code is CLI configuration, not a runnable API notebook — intentionally omitted.
   };
   function practicePanel() {
     const dir = location.pathname.split("/").slice(-2, -1)[0];
